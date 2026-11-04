@@ -593,8 +593,6 @@ body:not(.authed) .tabbar,body:not(.authed) .live-bar{display:none;}
 
 /* طلباتي */
 
-.pf-initial{width:84px;height:84px;border-radius:50%;background:var(--yellow);color:var(--teal-900);display:grid;place-items:center;font-size:36px;font-weight:800;border:4px solid #fff}
-
 /* ===== تطبيق الكباتن ===== */
 .net-dot{width:12px;height:12px;border-radius:50%;background:#cbd5d5;margin-inline-start:auto;margin-inline-end:6px;flex:none}.net-dot.on{background:var(--yellow);box-shadow:0 0 0 4px rgba(232,239,68,.35)}
 .sw{position:relative;width:58px;height:32px;border-radius:999px;border:0;background:#cbd5d5;cursor:pointer;flex:none;transition:background .2s}

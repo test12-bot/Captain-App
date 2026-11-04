@@ -187,7 +187,9 @@ function tabGo(id) { buzz(); stack = id === 'screen-jobs' ? ['screen-jobs'] : ['
 /* ---------- الدخول ---------- */
 /* الكابتن يقرأ: الطلبات الجديدة (للعروض) + النشطة (لمعرفة الكباتن المشغولين) + طلباته هو (للأرباح) */
 function capScope(u) { if (u && u.id) HWOrders.scope([{ by: 'status', eq: 'new' }, { by: 'status', eq: 'accepted' }, { by: 'status', eq: 'picked' }, Object.assign({ by: 'capKey' }, HWOrders.keyRange(u.id, 40))]); }
-function applyUser(u) { me = u; capScope(u); document.body.classList.toggle('authed', !!u); $('appShell').inert = !u; if (u) { $('pfName').textContent = u.name; $('pfPhone').textContent = u.phone; $('pfInitial').textContent = u.name.trim().charAt(0); } }
+function applyUser(u) { me = u; capScope(u); document.body.classList.toggle('authed', !!u); $('appShell').inert = !u; if (u) { $('pfName').textContent = u.name; $('pfPhone').textContent = u.phone; fillAv(); } }
+/* صورة الكابتن: تختارها أو ترفعها الإدارة فقط */
+function fillAv() { if (me) $('pfAv').src = HWBiz.capAv(Object.assign({ id: me.id }, myDoc())); }
 async function submitLogin(ev) {
     ev.preventDefault();
     const err = $('loginError'); err.textContent = '';
@@ -308,7 +310,7 @@ function saveSeen() { try { localStorage.setItem(SEEN_KEY, JSON.stringify(seen))
 async function takeOffer(id) {
     if (active()) { HWOrders.toast('أنهِ طلبك الحالي أولًا'); return; }
     buzz(20);
-    const ok = await HWOrders.claim(id, { id: me.id, name: me.name, phone: me.phone });
+    const d = myDoc(), ok = await HWOrders.claim(id, { id: me.id, name: me.name, phone: me.phone, av: d.av, pv: d.pv });   /* صورته تظهر للعميل والمطعم */
     if (ok) { HWOrders.toast('✓ الطلب لك، توجه للمتجر'); jobId = id; render(); } else { HWOrders.toast('سبقك كابتن آخر لهذا الطلب'); render(); }
 }
 function declineOffer(id) { const o = HWOrders.get(id); if (o && o.offerTo === me.id) HWOrders.update(id, { offerTo: null, offerAt: 0, declinedAt: Date.now(), offered: (o.offered || []).concat([me.id]) }); const d = (myDoc().declined || []).concat([id]).slice(-50); caps.patch(me.id, { declined: d }); buzz(); }
@@ -736,7 +738,7 @@ document.addEventListener('DOMContentLoaded', () => {
     introCtl = skip ? null : initIntroVideo();
     $('loginForm').addEventListener('submit', submitLogin);
     $('enterBtn').addEventListener('click', () => { if (me) finishLogin(); else openLogin(); });
-    caps.subscribe(() => { if (me) { checkAccount(); render(); } });
+    caps.subscribe(() => { if (me) { checkAccount(); render(); fillAv(); } }); HWBiz.onMedia(() => { if (me) fillAv(); });
     stState.subscribe(() => { if (me) render(); }); HWBiz.storesCol.subscribe(() => { if (me) render(); });
     HWBiz.targets.subscribe(() => { if (me) render(); }); HWBiz.announcementsCol.subscribe(() => { if (me) render(); });
     settingsCol.subscribe(l => { const d = l.filter(x => x.id === 'dispatch')[0]; autoMode = !d || d.auto !== false; if (me) render(); });

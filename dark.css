@@ -59,7 +59,6 @@
 :root[data-theme="dark"] .tb{--ink:#0E3A3B;--teal-800:#0E3A3B;--teal-900:#0E3A3B;--ink-soft:rgba(14,58,59,.72);--white:#fff;--surface:#fff;--cream:#F3F0E7;--cream-line:#E7E2D3;color:#0E3A3B}
 :root[data-theme="dark"] .qty button{--ink:#0E3A3B;--teal-800:#0E3A3B;--teal-900:#0E3A3B;--ink-soft:rgba(14,58,59,.72);--white:#fff;--surface:#fff;--cream:#F3F0E7;--cream-line:#E7E2D3;color:#0E3A3B}
 :root[data-theme="dark"] .field textarea{background:var(--surface)}
-:root[data-theme="dark"] .pf-initial{--ink:#0E3A3B;--teal-800:#0E3A3B;--teal-900:#0E3A3B;--ink-soft:rgba(14,58,59,.72);--white:#fff;--surface:#fff;--cream:#F3F0E7;--cream-line:#E7E2D3;color:#0E3A3B}
 :root[data-theme="dark"] .net-dot.on{--ink:#0E3A3B;--teal-800:#0E3A3B;--teal-900:#0E3A3B;--ink-soft:rgba(14,58,59,.72);--white:#fff;--surface:#fff;--cream:#F3F0E7;--cream-line:#E7E2D3;color:#0E3A3B}
 :root[data-theme="dark"] .sw::after{background:var(--surface)}
 :root[data-theme="dark"] .sw.on{--ink:#0E3A3B;--teal-800:#0E3A3B;--teal-900:#0E3A3B;--ink-soft:rgba(14,58,59,.72);--white:#fff;--surface:#fff;--cream:#F3F0E7;--cream-line:#E7E2D3;color:#0E3A3B}
