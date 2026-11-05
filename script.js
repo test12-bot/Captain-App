@@ -159,7 +159,7 @@ const TAB_OF = { 'screen-jobs': 'jobs', 'screen-job': 'jobs', 'screen-earn': 'ea
 const settingsCol = HWDB.col('settings'), stState = HWDB.col('storestate');
 /* موقع المتجر: من الطلب، وإن لم يُحفظ فيه (طلبات المطعم) نأخذه من بيانات المتجر التي تحددها الإدارة */
 function sLoc(o) { if (o.storeLoc && o.storeLoc.lat != null) return o.storeLoc; const st = o.storeId && stState.get(o.storeId); return st && st.lat != null ? { lat: st.lat, lng: st.lng } : null; } let autoMode = true, actMap = null;
-let me = null, orders = [], stack = ['screen-jobs'], cur = 'screen-jobs', earnRange = 'today', jobId = null, prevOffers = null, gpsWatch = null, lastGps = 0;
+let me = null, orders = [], stack = ['screen-jobs'], cur = 'screen-jobs', earnRange = 'open', jobId = null, prevOffers = null, gpsWatch = null, lastGps = 0;
 let seen = {}; try { seen = JSON.parse(localStorage.getItem(SEEN_KEY)) || {}; } catch (e) {}
 const caps = HWDB.col('captains'), issuesCol = HWDB.col('issues');
 let heatOn = false;   /* مناطق الطلب مخفية افتراضيًا، يشغّلها الكابتن من زر الشعلة على الخريطة */
@@ -582,7 +582,7 @@ function offerSheet(o) {
     const pk = myPos && sl ? HWMap.est(myPos, [sl.lat, sl.lng]) : (o.offerKm != null ? o.offerKm : null);
     const dk = o.distKm != null ? Number(o.distKm) : null, lim = (CFG.offerSeconds || 45) * 1000, t0 = o.offerTo === me.id ? o.offerAt : seen[o.id];
     const left = Math.max(0, Math.ceil((lim - (Date.now() - (t0 || Date.now()))) / 1000));
-    return '<div class="cm-earn"><b dir="ltr">' + money(s.net) + '<small>د.أ</small></b><p>ربحك من هذا الطلب' + (s.surge ? ' (شامل ' + money(s.surge) + ' رسوم ذروة)' : '') + '</p></div>' +
+    return (!s.fee && !HWOrders.isMarket(o) ? '<div class="cm-earn tbd"><b>تحدد لاحقًا</b><p>أجرة هذا الطلب تحددها الإدارة وتظهر في أرباحك فور تسعيره</p></div>' : '<div class="cm-earn"><b dir="ltr">' + money(s.net) + '<small>د.أ</small></b><p>ربحك من هذا الطلب' + (s.surge ? ' (شامل ' + money(s.surge) + ' رسوم ذروة)' : '') + '</p></div>') +
         '<div class="cm-rows"><div class="cm-row"><span class="ic">' + CI.store + '</span><div class="t"><small>الاستلام</small><b>' + H(o.storeName || o.from || '') + '</b></div><span class="km">' + (pk != null ? pk.toFixed(1) + ' كم · ' + kmMin(pk) + ' د' : '') + '</span></div>' +
         '<div class="cm-row"><span class="ic c">' + CI.user + '</span><div class="t"><small>التسليم</small><b>' + H((o.address && (o.address.label || o.address.area)) || o.to || '') + '</b></div><span class="km">' + (dk != null ? dk.toFixed(1) + ' كم · ' + (o.routeMin || kmMin(dk)) + ' د' : '') + '</span></div></div>' +
         (mk ? '<div class="cm-cash"><span>تدفع للمطعم <b>' + money(s.items) + '</b></span><span>تحصّل من العميل <b>' + money(s.collected) + '</b></span></div>' : '') +
@@ -635,6 +635,8 @@ function renderJob() {
 }
 
 /* ---------- الأرباح ---------- */
+/* "الحالي" = منذ آخر تسوية: بعد أن تسوّي الإدارة الحساب يبدأ من الصفر، والطلبات المسوّاة تبقى في اليوم/٧ أيام/الكل */
+function earnList() { return mineOrders().filter(o => o.status === 'delivered' && (earnRange === 'open' ? !o.settledAt : inRange(o.updatedAt || o.createdAt))); }
 function inRange(ts) {
     const d = new Date(ts), n = new Date();
     if (earnRange === 'today') return HWOrders.isToday(ts);
@@ -642,8 +644,8 @@ function inRange(ts) {
     return true;
 }
 function renderEarn() {
-    $('earnChips').innerHTML = [['today', 'اليوم'], ['week', '٧ أيام'], ['all', 'الكل']].map(r => '<button type="button" class="chip' + (earnRange === r[0] ? ' on' : '') + '" data-r="' + r[0] + '">' + r[1] + '</button>').join('');
-    const list = mineOrders().filter(o => o.status === 'delivered' && inRange(o.updatedAt || o.createdAt));
+    $('earnChips').innerHTML = [['open', 'الحالي'], ['today', 'اليوم'], ['week', '٧ أيام'], ['all', 'الكل']].map(r => '<button type="button" class="chip' + (earnRange === r[0] ? ' on' : '') + '" data-r="' + r[0] + '">' + r[1] + '</button>').join('');
+    const list = earnList();
     const t = list.reduce((a, o) => { const s = HWOrders.settle(o); a.n++; a.col += s.collected; a.items += s.items; a.fee += s.fee; a.com += s.commission; a.net += s.net; return a; }, { n: 0, col: 0, items: 0, fee: 0, com: 0, net: 0 });
     $('earnBody').innerHTML = '<div class="eg-grid"><div class="eg hi" data-stat="net"><small>صافي أرباحك</small><b>' + money2(t.net) + '</b></div>' +
         '<div class="eg" data-stat="n"><small>طلبات مسلّمة</small><b>' + t.n + '</b></div><div class="eg" data-stat="fee"><small>رسوم التوصيل</small><b>' + money2(t.fee) + '</b></div>' +
@@ -654,9 +656,9 @@ function renderEarn() {
 }
 /* تفاصيل بطاقات الأرباح (hw-stats.js): لكل رقم، من أين جاء طلبًا بطلب */
 function statDetail(k) {
-    const list = mineOrders().filter(o => o.status === 'delivered' && inRange(o.updatedAt || o.createdAt)).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    const list = earnList().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
     const S = list.map(o => [o, HWOrders.settle(o)]), sum = f => S.reduce((a, x) => a + f(x[1]), 0);
-    const per = { today: 'اليوم', week: 'آخر ٧ أيام', all: 'كل الفترات' }[earnRange], m = v => money2(v);
+    const per = { open: 'منذ آخر تسوية', today: 'اليوم', week: 'آخر ٧ أيام', all: 'كل الفترات' }[earnRange], m = v => money2(v);
     const km = list.reduce((a, o) => a + (Number(o.distKm || o.distance) || 0), 0);
     const it = (f) => S.map(x => HWStats.orderItem(x[0], m(f(x[1]))));
     const base = { sub: per, listTitle: 'لكل طلب' };
