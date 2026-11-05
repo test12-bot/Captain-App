@@ -279,9 +279,10 @@ setInterval(() => { if (me && isOnline()) caps.patch(me.id, { lastSeen: Date.now
 /* الهاتف يوقف تحديثات الموقع بصمت (قفل الشاشة، فتح واتساب أو الخرائط) ولا تعود وحدها:
    نعيد تشغيلها عند الرجوع للتطبيق، وإذا لم يصل موقع جديد خلال 30 ثانية */
 function gpsRestart() { if (!me) return; stopGps(); startGps(false); if (navigator.geolocation && !(HWNative.bg && isOnline())) navigator.geolocation.getCurrentPosition(p => { gotPos(p.coords.latitude, p.coords.longitude, p.coords.accuracy); pushLoc(true); }, () => {}, { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 }); }
-setInterval(() => { if (me && !document.hidden && (isOnline() || active()) && Date.now() - lastFix > (HWNative.bg ? 60000 : 30000)) gpsRestart(); }, 10000);
-document.addEventListener('visibilitychange', () => { if (!document.hidden && me) gpsRestart(); });
-window.addEventListener('pageshow', () => { if (me) gpsRestart(); });
+const nativeGps = () => HWNative.bg && isOnline();   /* في التطبيق الحقيقي الموقع المستمر يعمل وحده (ولا يرسل تحديثًا وهو واقف)، فلا نعيد تشغيله */
+setInterval(() => { if (me && !document.hidden && !nativeGps() && (isOnline() || active()) && Date.now() - lastFix > 30000) gpsRestart(); }, 10000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden && me && !nativeGps()) gpsRestart(); });
+window.addEventListener('pageshow', () => { if (me && !nativeGps()) gpsRestart(); });
 /* أثناء المهمة: يُحدَّث الموقع على الطلب كل 15 ثانية حتى لو لم يتحرك الكابتن، فيبقى وقت الوصول ظاهرًا للمطعم والعميل */
 setInterval(() => { const j = me && isOnline() && active(); if (!j) return; if (!j.capLoc || Date.now() - (j.capLoc.at || 0) > 14000) pushLoc(true); }, 5000);
 
