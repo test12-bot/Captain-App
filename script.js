@@ -286,6 +286,7 @@ function offers() {
     const now = Date.now(), lim = (CFG.offerSeconds || 45) * 1000, dec = myDoc().declined || [];
     return orders.filter(o => HWOrders.offerable(o)).filter(o => {
         if (o.offerTo === me.id) return now - (o.offerAt || 0) < lim;          /* عرض موجّه لي (حتى لو رفضته في دورة سابقة) */
+        if (o.offerAll && !o.offerTo) return dec.indexOf(o.id) < 0 && !active();  /* ينتظر أكثر من 5 دقائق: يُعرض على الجميع، وأول من يقبل يأخذه */
         if (o.offerTo || !autoMode || dec.indexOf(o.id) >= 0) return false;    /* موجّه لغيري، أو الوضع يدوي، أو رفضته */
         return now - (o.createdAt || 0) > 90000 && (o.offered || []).indexOf(me.id) < 0;   /* احتياط: لم يتصرف أحد فيعرض للجميع */
     });
@@ -303,8 +304,7 @@ function selfDispatch() {
         if (o.offerTo && HWOrders.offerable(o) && now - (o.offerAt || 0) < lim + 2000) pend[o.offerTo] = o.id;
     });
     if (pend[me.id]) return;
-    const dist = (c, o) => { const l = sLoc(o); return c.lat != null && l ? HWMap.est([c.lat, c.lng], [l.lat, l.lng]) : null; };
-    orders.filter(o => HWOrders.offerable(o)).sort((a, b) => a.createdAt - b.createdAt).some(o => {
+    HWOrders.prioritySort(orders.filter(o => HWOrders.offerable(o) && !o.offerAll)).some(o => {
         if (o.offerTo && now - (o.offerAt || 0) < lim + 2000) return false;
         let offered = (o.offered || []).slice(); if (o.offerTo && offered.indexOf(o.offerTo) < 0) offered.push(o.offerTo);
         const free = all.filter(c => capLive(c) && !c.overLimit && !busy[c.id] && !pend[c.id]);
@@ -312,13 +312,10 @@ function selfDispatch() {
             if (o.declinedAt && now - o.declinedAt < 30000) return false;              /* رُفض للتو: مهلة قصيرة قبل إعادة العرض */
             offered = [];
         }
-        const cands = free.filter(c => offered.indexOf(c.id) < 0).sort((a, b) => {
-            const da = dist(a, o), db = dist(b, o);
-            if (da != null && db != null) return da - db; if (da != null) return -1; if (db != null) return 1; return (a.lastSeen || 0) - (b.lastSeen || 0);
-        });
+        const cands = HWOrders.rankCaptains(free.filter(c => offered.indexOf(c.id) < 0), o, sLoc(o));
         if (!cands.length || cands[0].id !== me.id) return false;
-        const d = dist(cands[0], o);
-        HWOrders.update(o.id, { offerTo: me.id, offerAt: now, offered: offered.concat([me.id]), offerName: me.name, offerKm: d == null ? null : Math.round(d * 10) / 10 }, 'offer_sent');
+        const d = cands[0]._km;
+        HWOrders.update(o.id, { offerTo: me.id, offerAt: now, offered: offered.concat([me.id]), offerName: me.name, offerKm: d == null ? null : Math.round(d * 10) / 10, offerWhy: cands[0]._why }, 'offer_sent');
         return true;
     });
 }
@@ -330,7 +327,7 @@ async function takeOffer(id) {
     const d = myDoc(), ok = await HWOrders.claim(id, { id: me.id, num: d.num, name: me.name, phone: me.phone, av: d.av, pv: d.pv });   /* صورته تظهر للعميل والمطعم */
     if (ok) { HWOrders.toast('✓ الطلب لك، توجه للمتجر'); jobId = id; render(); } else { HWOrders.toast('سبقك كابتن آخر لهذا الطلب'); render(); }
 }
-function declineOffer(id) { const o = HWOrders.get(id); if (o && o.offerTo === me.id) HWOrders.update(id, { offerTo: null, offerAt: 0, declinedAt: Date.now(), offered: (o.offered || []).concat([me.id]) }); const d = (myDoc().declined || []).concat([id]).slice(-50); caps.patch(me.id, { declined: d }); buzz(); }
+function declineOffer(id) { const o = HWOrders.get(id); if (o && o.offerTo === me.id) HWOrders.update(id, { offerTo: null, offerAt: 0, declinedAt: Date.now(), offered: (o.offered || []).concat([me.id]) }); const md = myDoc(), d = (md.declined || []).concat([id]).slice(-50), k = HWOrders.dayKey(); caps.patch(me.id, { declined: d, decl: { d: k, n: (md.decl && md.decl.d === k ? md.decl.n || 0 : 0) + 1 } }); buzz(); }
 function earnOf(o) { const s = HWOrders.settle(o); return s.net; }
 
 
@@ -353,7 +350,7 @@ function activeCard(o) {
     const s = HWOrders.settle(o), st = nextStep(o), mk = HWOrders.isMarket(o), toStore = o.status === 'accepted';
     const sd = toStore && o.storeId ? HWBiz.storeById(o.storeId) : null;
     const phone = toStore ? o.storePhone || (sd && sd.phone) || '' : (o.customer && o.customer.phone) || o.phone || '';
-    return '<div class="act-card"><small>' + H(o.code) + ' · ' + (toStore ? 'في الطريق للمتجر' : 'في الطريق للعميل') + '</small>' +
+    return '<div class="act-card"><small>' + H(HWOrders.shortNo(o)) + ' · ' + (toStore ? 'في الطريق للمتجر' : 'في الطريق للعميل') + '</small>' +
         '<h2>' + (toStore ? H(o.storeName || o.from || '') : H((o.customer && o.customer.name) || o.to || 'العميل')) + '</h2>' +
         '<div class="act-info">' +
         (toStore ? (mk ? '<div><span>تدفعه للمتجر نقدًا</span><b>' + money2(s.items) + '</b></div><div><span>حالة المتجر</span><b>' + (o.storeState === 'ready' ? 'جاهز ✓' : 'قيد التحضير') + '</b></div>' : '<div><span>من</span><b>' + H(o.from || '') + '</b></div>')
@@ -367,10 +364,10 @@ function stepAction(k, id) {
     if (k === 'arrS') HWOrders.update(id, { arrivedStore: true }, 'arrived_store');
     else if (k === 'arrC') HWOrders.update(id, { arrivedCustomer: true }, 'arrived_customer');
     else if (k === 'pick') {
-        if (HWOrders.isMarket(o)) sheet('<div class="sh-head"><div><small>' + H(o.code) + '</small><h3>ادفع للمتجر</h3></div></div><div class="pay-big"><div class="big">' + money(s.items) + ' د.أ</div><p class="mut">ادفع هذا المبلغ نقدًا لـ ' + H(o.storeName) + ' واستلم الطلب' + (o.storeState !== 'ready' ? '<br><b style="color:var(--danger)">تنبيه: المتجر لم يؤكد أن الطلب جاهز</b>' : '') + '</p></div><button type="button" class="submit-btn" onclick="confirmPick(\'' + id + '\')"><span class="btn-label">دفعت واستلمت</span></button>');
+        if (HWOrders.isMarket(o)) sheet('<div class="sh-head"><div><small>' + H(HWOrders.shortNo(o)) + '</small><h3>ادفع للمتجر</h3></div></div><div class="pay-big"><div class="big">' + money(s.items) + ' د.أ</div><p class="mut">ادفع هذا المبلغ نقدًا لـ ' + H(o.storeName) + ' واستلم الطلب' + (o.storeState !== 'ready' ? '<br><b style="color:var(--danger)">تنبيه: المتجر لم يؤكد أن الطلب جاهز</b>' : '') + '</p></div><button type="button" class="submit-btn" onclick="confirmPick(\'' + id + '\')"><span class="btn-label">دفعت واستلمت</span></button>');
         else confirmPick(id);
     } else if (k === 'done') {
-        if (HWOrders.isMarket(o)) sheet('<div class="sh-head"><div><small>' + H(o.code) + '</small><h3>حصّل من العميل</h3></div></div><div class="pay-big"><div class="big">' + money(s.collected) + ' د.أ</div><p class="mut">المنتجات ' + money(s.items) + ' + التوصيل ' + money(s.fee) + (s.promo ? ' − كود خصم ' + money(s.promo) : '') + '</p></div>' +
+        if (HWOrders.isMarket(o)) sheet('<div class="sh-head"><div><small>' + H(HWOrders.shortNo(o)) + '</small><h3>حصّل من العميل</h3></div></div><div class="pay-big"><div class="big">' + money(s.collected) + ' د.أ</div><p class="mut">المنتجات ' + money(s.items) + ' + التوصيل ' + money(s.fee) + (s.promo ? ' − كود خصم ' + money(s.promo) : '') + '</p></div>' +
             (o.pin ? '<div class="pin-in"><label for="pinIn">رمز التسليم من العميل</label><input id="pinIn" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="• • • •" dir="ltr"><small class="mut">يظهر الرمز في تطبيق العميل</small></div>' : '') +
             '<button type="button" class="submit-btn" onclick="confirmDone(\'' + id + '\')"><span class="btn-label">استلمت المبلغ وسلّمت الطلب</span></button>' +
             (o.pin ? '<button type="button" class="more-link" style="margin-top:10px" onclick="noPin(\'' + id + '\')">العميل لا يملك الرمز</button>' : '') +
@@ -385,7 +382,7 @@ function confirmDone(id, skipPin) {
         const v = ($('pinIn').value || '').replace(/\D/g, '');
         if (v !== String(o.pin)) { $('pinIn').classList.add('bad'); HWOrders.toast('الرمز غير صحيح، اطلبه من العميل'); buzz(40); return; }
     }
-    closeSheet(); HWOrders.update(id, { status: 'delivered', cashCollected: true, pinOk: !skipPin }); HWOrders.toast('✓ تم التسليم، أحسنت!'); jobId = null; if (cur === 'screen-job') goBack();
+    closeSheet(); HWOrders.update(id, { status: 'delivered', cashCollected: true, pinOk: !skipPin }); caps.patch(me.id, { lastJobAt: Date.now() }); HWOrders.toast('✓ تم التسليم، أحسنت!'); jobId = null; if (cur === 'screen-job') goBack();
 }
 function noPin(id) {                                   // التسليم بدون رمز يُسجَّل كبلاغ لمراجعة الإدارة
     if (!confirm('تأكيد التسليم بدون رمز؟ سيُسجَّل ذلك لمراجعة الإدارة.')) return;
@@ -400,7 +397,7 @@ function arrivedAt(o) { const h = (o.history || []).filter(x => x.s === 'arrived
 function noAnswer(id) {
     const o = HWOrders.get(id); if (!o) return;
     const left = Math.max(0, NOSHOW_WAIT - (Date.now() - (arrivedAt(o) || Date.now())));
-    sheet('<div class="sh-head"><div><small>' + H(o.code) + '</small><h3>العميل لا يرد</h3></div></div>' +
+    sheet('<div class="sh-head"><div><small>' + H(HWOrders.shortNo(o)) + '</small><h3>العميل لا يرد</h3></div></div>' +
         '<ol class="ns-steps"><li>اتصل بالعميل أكثر من مرة' + (o.customer && o.customer.phone ? ' <a href="tel:' + H(o.customer.phone) + '">اتصال</a>' : '') + '</li><li>صوّر الطلب عند الباب كإثبات وصولك</li><li>انتظر 5 دقائق من وصولك، ثم سجّل عدم الاستلام</li></ol>' +
         '<div class="ns-photo" id="nsPhoto">' + (o.podAt ? '<span>✓ تم حفظ صورة الإثبات</span>' : '') + '</div>' +
         '<label class="ghost-btn wide file-btn">' + (o.podAt ? 'إعادة التصوير' : 'صوّر الطلب عند الباب') + '<input type="file" accept="image/*" capture="environment" onchange="podPhoto(\'' + id + '\',this.files[0])"></label>' +
@@ -432,7 +429,7 @@ function markNoShow(id) {
 const ISSUES = ['المتجر مغلق أو لا يرد', 'تأخر تحضير الطلب', 'العميل لا يرد', 'العنوان غير صحيح', 'عطل أو حادث في الطريق', 'أخرى'];
 function openIssue(id) {
     const o = HWOrders.get(id); if (!o) return;
-    sheet('<div class="sh-head"><div><small>' + H(o.code) + '</small><h3>ما المشكلة؟</h3></div></div><div class="iss">' + ISSUES.map((r, i) => '<button type="button" class="chip" data-iss="' + i + '">' + r + '</button>').join('') + '</div>' +
+    sheet('<div class="sh-head"><div><small>' + H(HWOrders.shortNo(o)) + '</small><h3>ما المشكلة؟</h3></div></div><div class="iss">' + ISSUES.map((r, i) => '<button type="button" class="chip" data-iss="' + i + '">' + r + '</button>').join('') + '</div>' +
         '<div class="field"><label for="issNote">تفاصيل <span class="opt">(اختياري)</span></label><textarea id="issNote" rows="2"></textarea></div>' +
         '<button type="button" class="submit-btn" onclick="sendIssue(\'' + id + '\')"><span class="btn-label">إرسال للإدارة</span></button>' +
         '<button type="button" class="ghost-btn wide" style="margin-top:8px" onclick="closeSheet();HWSupport.open({order:\'' + H(o.code) + '\'})">راسل الدعم</button>');
@@ -601,19 +598,27 @@ function jobSheet(o) {
     const tg = toStore ? sLoc(o) : (o.address && o.address.lat != null ? o.address : null), km = myPos && tg ? HWMap.est(myPos, [tg.lat, tg.lng]) : null;
     const who = toStore ? (o.storeName || o.from || '') : ((o.customer && o.customer.name) || 'العميل');
     const sub = toStore ? (o.storeState === 'ready' ? 'الطلب جاهز للاستلام' : 'الطلب قيد التحضير') : H(((o.address && (o.address.label || o.address.area)) || o.to || '') + (o.address && o.address.details ? ' · ' + o.address.details : ''));
-    return '<div class="cm-job"><span class="av">' + (toStore && o.storeId ? '<img src="' + H(HWBiz.logo(o.storeId)) + '" alt="">' : CI.user) + '</span><div class="t"><small>' + H(o.code) + '</small><b>توجّه إلى ' + H(who) + '</b><small>' + sub + '</small></div>' +
+    return '<div class="cm-job"><span class="av">' + (toStore && o.storeId ? '<img src="' + H(HWBiz.logo(o.storeId)) + '" alt="">' : CI.user) + '</span><div class="t"><small>' + H(HWOrders.shortNo(o)) + '</small><b>توجّه إلى ' + H(who) + '</b><small>' + sub + '</small></div>' +
         (km != null ? '<span class="eta">' + kmMin(km) + '<small> ' + (HWI18n.lang === 'en' ? 'min' : 'د') + '</small></span>' : '') + '</div>' +
         (!toStore && o.address && o.address.note ? '<div class="drop-note"><span>' + CI.info + ' تعليمات العميل</span><b>' + H(o.address.note) + '</b></div>' : '') +
+        /* طلب يدوي بوجهة غير محددة: الكابتن يختار المنطقة الفعلية، والإدارة تعتمد الأجرة بضغطة */
+        (!mk && o.unpriced && !o.to ? (o.capDest ? '<div class="drop-note"><span>' + CI.info + ' اخترت منطقة التسليم</span><b>' + H(o.capDest.n) + ' · بانتظار اعتماد الإدارة</b></div>'
+            : '<button type="button" class="ghost-btn wide cap-dest" onclick="pickCapDest(\'' + o.id + '\')">' + CI.info + ' حدد منطقة التسليم من القائمة</button>') : '') +
         (mk ? '<div class="cm-cash">' + (toStore ? '<span>تدفع للمطعم <b>' + money(s.items) + '</b></span>' : '') + '<span>تحصّل من العميل <b>' + money(s.collected) + '</b></span></div>' : '') +
         '<div class="cm-btns"><a href="' + H(navUrl(o)) + '" target="_blank" rel="noopener">' + CI.nav + 'افتح الخريطة</a>' + (phone ? '<a href="tel:' + H(phone) + '">' + CI.phone + (toStore ? 'اتصل بالمطعم' : 'اتصل بالعميل') + '</a>' : '') +
         '<button type="button" onclick="openJob(\'' + o.id + '\')">' + CI.list + 'التفاصيل</button></div>' +
         (st ? '<button type="button" class="cm-main" data-step="' + st.k + '" data-id="' + o.id + '">' + st.t + '</button>' : '');
 }
+function pickCapDest(id) {
+    const o = HWOrders.get(id); if (!o) return;
+    HWDest.open({ sid: o.storeId || '', sub: HWOrders.shortNo(o) + ' · ' + (o.storeName || ''), title: 'أين سلّمت الطلب؟', allowNone: false,
+        onPick: (a) => { if (!a) return; HWOrders.update(id, { capDest: { n: a.n, fee: a.fee } }, 'cap_dest'); HWOrders.toast('أُرسلت المنطقة للإدارة لاعتماد الأجرة'); render(); } });
+}
 /* الدعم داخل التطبيق. أثناء طلب جارٍ: محادثة برقم الطلب، أو بلاغ سريع يصل للإدارة */
 function openSupport() {
     const a = active();
     if (!a) { HWSupport.open(); return; }
-    sheet('<div class="sh-head"><div><small dir="ltr">' + H(a.code) + '</small><h3>الدعم</h3></div></div><div class="sup-list">' +
+    sheet('<div class="sh-head"><div><small dir="ltr">' + H(HWOrders.shortNo(a)) + '</small><h3>الدعم</h3></div></div><div class="sup-list">' +
         '<button type="button" onclick="closeSheet();HWSupport.open({order:\'' + H(a.code) + '\'})">راسل الدعم بخصوص هذا الطلب</button>' +
         '<button type="button" onclick="closeSheet();openIssue(\'' + a.id + '\')">الإبلاغ عن مشكلة في الطلب</button>' +
         '<a href="tel:' + H(CFG.opsPhone || '') + '">اتصال بمركز العمليات</a></div>' +
@@ -633,7 +638,7 @@ function navUrl(o) {
 function renderJob() {
     const o = HWOrders.get(jobId); if (!o) { $('jobBody').innerHTML = '<div class="empty-orders">الطلب غير موجود</div>'; return; }
     const s = HWOrders.settle(o), st = nextStep(o), mk = HWOrders.isMarket(o);
-    $('jobBody').innerHTML = '<div class="page-heading"><h1>' + H(o.code) + '</h1><p>' + H(o.storeName || o.from || '') + ' · ' + HWOrders.label(o) + '</p></div>' +
+    $('jobBody').innerHTML = '<div class="page-heading"><h1>' + H(HWOrders.shortNo(o)) + '</h1><p>' + H(o.storeName || o.from || '') + ' · ' + HWOrders.label(o) + '</p></div>' +
         (o.status === 'accepted' || o.status === 'picked' ? activeCard(o) : '') +
         (mk ? '<h3 class="sec-t">المنتجات</h3><div class="cart-card">' + o.items.map(l => '<div class="cl ro"><div class="cl-txt"><b>' + l.qty + '× ' + H(l.name) + '</b>' + (l.opts && l.opts.length ? '<small>' + H(HWBiz.optsText(l.opts)) + '</small>' : '') + (l.notes ? '<small>' + H(l.notes) + '</small>' : '') + '</div></div>').join('') + (o.notes ? '<p class="mut">ملاحظة: ' + H(o.notes) + '</p>' : '') + '</div>' : '') +
         '<h3 class="sec-t">الحساب</h3><div class="cart-card sum">' + (mk ? '<div><span>تدفع للمتجر</span><b>' + money2(s.items) + '</b></div><div><span>تحصّل من العميل</span><b>' + money2(s.collected) + '</b></div>' : '') + '<div><span>رسوم التوصيل</span><b>' + money2(s.fee) + '</b></div><div><span>عمولة المنصة (' + Math.round((CFG.commissionRate || .1) * 100) + '٪)</span><b>−' + money2(s.commission) + '</b></div><div class="tot"><span>صافي أرباحك</span><b>' + money2(s.net) + '</b></div></div>' +
@@ -658,7 +663,7 @@ function renderEarn() {
         '<div class="eg" data-stat="col"><small>حصّلت من العملاء</small><b>' + money2(t.col) + '</b></div><div class="eg" data-stat="items"><small>دفعت للمطاعم</small><b>' + money2(t.items) + '</b></div>' +
         '<div class="eg warn" data-stat="com" style="grid-column:1/-1"><small>عمولة المنصة (' + Math.round((CFG.commissionRate || .1) * 100) + '٪ من التوصيل)</small><b>' + money2(t.com) + '</b></div></div>' +
         settleCard() +
-        '<h3 class="sec-t">الطلبات</h3><div class="cart-card">' + (list.length ? list.slice().sort((a, b) => b.updatedAt - a.updatedAt).map(o => '<div class="er"><div><b>' + H(o.storeName || o.from || '') + '</b><small>' + H(o.code) + ' · ' + HWOrders.ago(o.updatedAt || o.createdAt) + '</small></div><b>+' + money(earnOf(o)) + '</b></div>').join('') : '<p class="mut">لا توجد طلبات في هذه الفترة</p>') + '</div>';
+        '<h3 class="sec-t">الطلبات</h3><div class="cart-card">' + (list.length ? list.slice().sort((a, b) => b.updatedAt - a.updatedAt).map(o => '<div class="er"><div><b>' + H(o.storeName || o.from || '') + '</b><small>' + H(HWOrders.shortNo(o)) + ' · ' + HWOrders.ago(o.updatedAt || o.createdAt) + '</small></div><b>+' + money(earnOf(o)) + '</b></div>').join('') : '<p class="mut">لا توجد طلبات في هذه الفترة</p>') + '</div>';
 }
 /* تفاصيل بطاقات الأرباح (hw-stats.js): لكل رقم، من أين جاء طلبًا بطلب */
 function statDetail(k) {
@@ -700,7 +705,7 @@ let readySeen = {}, askSeen = {};
 function readyCheck() {
     const a = active(); if (!a || a.status !== 'accepted' || a.storeState !== 'ready' || readySeen[a.id]) return;
     readySeen[a.id] = 1; HWOrders.toast('✓ ' + (a.storeName || 'المتجر') + ': الطلب جاهز للاستلام'); HWNotify.play('status'); buzz([30, 60, 30]);
-    HWNotify.notify('HIGHWAY · الطلب جاهز', (a.storeName || '') + ' جهّز الطلب ' + a.code);
+    HWNotify.notify('HIGHWAY · الطلب جاهز', (a.storeName || '') + ' جهّز الطلب ' + HWOrders.shortNo(a));
 }
 function arriveCheck() {
     const a = active(); if (!a || !myPos) return;
@@ -709,7 +714,7 @@ function arriveCheck() {
     const key = a.id + (toStore ? 's' : 'c'); if (askSeen[key]) return;
     if (HWMap.est(myPos, [tgt.lat, tgt.lng]) > .2) return;
     askSeen[key] = 1; buzz([20, 40, 20]); HWNotify.play('status');
-    sheet('<div class="sh-head"><div><small>' + H(a.code) + '</small><h3>' + (toStore ? 'وصلت للمتجر؟' : 'وصلت للعميل؟') + '</h3></div></div>' +
+    sheet('<div class="sh-head"><div><small>' + H(HWOrders.shortNo(a)) + '</small><h3>' + (toStore ? 'وصلت للمتجر؟' : 'وصلت للعميل؟') + '</h3></div></div>' +
         '<p class="mut">' + (toStore ? 'أنت قريب من ' + H(a.storeName || 'المتجر') : 'أنت قريب من عنوان ' + H((a.customer && a.customer.name) || 'العميل')) + (!toStore && a.address.note ? '<br><b><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v12H8l-4 4V4Z"/><path d="M8 9h8M8 12h5"/></svg> ' + H(a.address.note) + '</b>' : '') + '</p>' +
         '<div class="btn-row"><button type="button" class="submit-btn" data-step="' + (toStore ? 'arrS' : 'arrC') + '" data-id="' + a.id + '" onclick="closeSheet()"><span class="btn-label">نعم، وصلت</span></button><button type="button" class="ghost-btn" onclick="closeSheet()">ليس بعد</button></div>');
 }
@@ -720,7 +725,14 @@ function onOrders(l) {
     prevOffers = ids; saveSeen(); readyCheck();
     if (ids && !active()) HWNotify.ring('offer', 'offer', 3000); else HWNotify.stop('offer');   /* يرن حتى يقبل الكابتن أو يرفض أو تنتهي المهلة */
     const a = mineOrders().filter(o => o.status === 'cancelled' && !seen['c' + o.id] && Date.now() - o.updatedAt < 6e5)[0];
-    if (a) { seen['c' + a.id] = 1; HWOrders.toast('تم إلغاء الطلب ' + a.code); HWNotify.play('alert'); buzz(40); }
+    if (a) {
+        seen['c' + a.id] = 1; HWNotify.play('alert'); buzz(60); HWNotify.notify('HIGHWAY · أُلغي الطلب ' + HWOrders.shortNo(a), a.cancelReason || '', a.id);
+        /* إلغاء بعد الإسناد: نافذة واضحة لا يفوّتها الكابتن، مع ما يفعله إن كان استلم الطلب */
+        sheet('<div class="sh-head"><div><small dir="ltr">' + H(HWOrders.shortNo(a)) + '</small><h3>تم إلغاء الطلب</h3></div></div>' +
+            '<p class="cx-why">' + H(a.cancelReason || 'ألغت الإدارة الطلب') + '</p>' +
+            (a.cancelledAfter === 'picked' ? '<p class="cx-note">إذا استلمت الطلب من ' + H(a.storeName || 'المتجر') + '، أرجعه له أو تواصل مع الدعم.</p>' : '<p class="cx-note">لا داعي للذهاب إلى ' + H(a.storeName || 'المتجر') + '. ستصلك الطلبات الجديدة كالعادة.</p>') +
+            '<button type="button" class="submit-btn" onclick="closeSheet()"><span class="btn-label">حسنًا</span></button>');
+    }
     render();
 }
 
