@@ -162,7 +162,7 @@ function sLoc(o) { if (o.storeLoc && o.storeLoc.lat != null) return o.storeLoc; 
 let me = null, orders = [], stack = ['screen-jobs'], cur = 'screen-jobs', earnRange = 'today', jobId = null, prevOffers = null, gpsWatch = null, lastGps = 0;
 let seen = {}; try { seen = JSON.parse(localStorage.getItem(SEEN_KEY)) || {}; } catch (e) {}
 const caps = HWDB.col('captains'), issuesCol = HWDB.col('issues');
-let heatOn = true;   /* مناطق الطلب ظاهرة افتراضيًا وقت الانتظار */
+let heatOn = false;   /* مناطق الطلب مخفية افتراضيًا، يشغّلها الكابتن من زر الشعلة على الخريطة */
 
 function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms || 8); } catch (e) {} }
 function readJSON(k, d) { try { return JSON.parse(localStorage.getItem(k)) || d; } catch (e) { return d; } }
@@ -177,6 +177,7 @@ function showScreen(id) {
     if (id !== 'screen-jobs') ['cap-off', 'cap-idle', 'cap-offer', 'cap-job'].forEach(c => document.body.classList.remove(c));
     $('headerBack').classList.toggle('show', ROOTS.indexOf(id) < 0);
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab === TAB_OF[id]));
+    HWHead.close(); if (id !== 'screen-jobs') HWHead.place(null);
     window.scrollTo({ top: 0, behavior: 'auto' }); render();
     if (id === 'screen-jobs' && homeMap) setTimeout(() => homeMap.invalidateSize(), 60);
 }
@@ -187,9 +188,19 @@ function tabGo(id) { buzz(); stack = id === 'screen-jobs' ? ['screen-jobs'] : ['
 /* ---------- الدخول ---------- */
 /* الكابتن يقرأ: الطلبات الجديدة (للعروض) + النشطة (لمعرفة الكباتن المشغولين) + طلباته هو (للأرباح) */
 function capScope(u) { if (u && u.id) HWOrders.scope([{ by: 'status', eq: 'new' }, { by: 'status', eq: 'accepted' }, { by: 'status', eq: 'picked' }, Object.assign({ by: 'capKey' }, HWOrders.keyRange(u.id, 40))]); }
-function applyUser(u) { me = u; capScope(u); document.body.classList.toggle('authed', !!u); $('appShell').inert = !u; if (u) { $('pfName').textContent = u.name; $('pfPhone').textContent = u.phone; fillAv(); } }
-/* صورة الكابتن: تختارها أو ترفعها الإدارة فقط */
-function fillAv() { if (me) $('pfAv').src = HWBiz.capAv(Object.assign({ id: me.id }, myDoc())); }
+function applyUser(u) { me = u; capScope(u); document.body.classList.toggle('authed', !!u); $('appShell').inert = !u; if (u) { $('pfName').textContent = u.name; $('pfPhone').textContent = u.phone; fillAv(); HWSupport.rescope(); } else HWHead.user(null); }
+/* صورة الكابتن: تختارها أو ترفعها الإدارة فقط. تظهر في الملف الشخصي وأعلى الشاشة */
+function fillAv() {
+    if (!me) return; const d = myDoc(), src = HWBiz.capAv(Object.assign({ id: me.id }, d));
+    $('pfAv').src = src; $('pfNum').textContent = d.num || '—';
+    HWHead.user({ img: src, name: me.name, role: 'كابتن HIGHWAY' + (d.num ? ' · ' + d.num : '') });
+}
+HWHead.init({
+    app: 'captain', logout: () => logout(),
+    items: [{ k: 'profile', t: 'الملف الشخصي', fn: () => tabGo('screen-profile') }, { k: 'support', t: 'الدعم', fn: () => openSupport() }],
+    go: (k) => { if (/^support/.test(k)) HWSupport.open(); else tabGo('screen-jobs'); }
+});
+HWSupport.init({ role: 'k', me: () => me ? { uid: me.id, name: me.name, phone: me.phone, img: HWBiz.capAv(Object.assign({ id: me.id }, myDoc())) } : null });
 async function submitLogin(ev) {
     ev.preventDefault();
     const err = $('loginError'); err.textContent = '';
@@ -310,7 +321,7 @@ function saveSeen() { try { localStorage.setItem(SEEN_KEY, JSON.stringify(seen))
 async function takeOffer(id) {
     if (active()) { HWOrders.toast('أنهِ طلبك الحالي أولًا'); return; }
     buzz(20);
-    const d = myDoc(), ok = await HWOrders.claim(id, { id: me.id, name: me.name, phone: me.phone, av: d.av, pv: d.pv });   /* صورته تظهر للعميل والمطعم */
+    const d = myDoc(), ok = await HWOrders.claim(id, { id: me.id, num: d.num, name: me.name, phone: me.phone, av: d.av, pv: d.pv });   /* صورته تظهر للعميل والمطعم */
     if (ok) { HWOrders.toast('✓ الطلب لك، توجه للمتجر'); jobId = id; render(); } else { HWOrders.toast('سبقك كابتن آخر لهذا الطلب'); render(); }
 }
 function declineOffer(id) { const o = HWOrders.get(id); if (o && o.offerTo === me.id) HWOrders.update(id, { offerTo: null, offerAt: 0, declinedAt: Date.now(), offered: (o.offered || []).concat([me.id]) }); const d = (myDoc().declined || []).concat([id]).slice(-50); caps.patch(me.id, { declined: d }); buzz(); }
@@ -418,7 +429,7 @@ function openIssue(id) {
     sheet('<div class="sh-head"><div><small>' + H(o.code) + '</small><h3>ما المشكلة؟</h3></div></div><div class="iss">' + ISSUES.map((r, i) => '<button type="button" class="chip" data-iss="' + i + '">' + r + '</button>').join('') + '</div>' +
         '<div class="field"><label for="issNote">تفاصيل <span class="opt">(اختياري)</span></label><textarea id="issNote" rows="2"></textarea></div>' +
         '<button type="button" class="submit-btn" onclick="sendIssue(\'' + id + '\')"><span class="btn-label">إرسال للإدارة</span></button>' +
-        '<a class="ghost-btn wide" style="margin-top:8px;display:block;text-align:center" href="https://wa.me/962791819432?text=' + encodeURIComponent('كابتن ' + me.name + ' — مشكلة في الطلب ' + o.code) + '" target="_blank" rel="noopener">تواصل مع الدعم عبر واتساب</a>');
+        '<button type="button" class="ghost-btn wide" style="margin-top:8px" onclick="closeSheet();HWSupport.open({order:\'' + H(o.code) + '\'})">راسل الدعم</button>');
 }
 function sendIssue(id) {
     const on = document.querySelector('.iss .chip.on'); if (!on) { HWOrders.toast('اختر نوع المشكلة'); return; }
@@ -460,7 +471,7 @@ function heatSpots() {
     });
     return Object.keys(cells).map(k => { const p = k.split(',').map(Number); return { p, n: cells[k] }; });
 }
-function toggleHeat() { heatOn = !heatOn; buzz(); mapSig = ''; renderMapLayers(true); const b = $('heatBtn'); if (b) b.classList.toggle('on', heatOn); }
+function toggleHeat() { heatOn = !heatOn; buzz(); mapSig = ''; renderMapLayers(true); const b = $('heatBtn'); if (b) { b.classList.toggle('on', heatOn); b.setAttribute('aria-pressed', String(heatOn)); } HWOrders.toast(heatOn ? 'مناطق الطلب ظاهرة: الأصفر حيث تتركز الطلبات' : 'أُخفيت مناطق الطلب'); }
 function sheet(h) { $('sheetBody').innerHTML = h; $('sheet').classList.add('show'); }
 function closeSheet() { $('sheet').classList.remove('show'); }
 function openJob(id) { jobId = id; goTo('screen-job'); }
@@ -494,10 +505,9 @@ function renderMapLayers(force) {
         if (sl && dl) ordLayer.addLayer(HWMap.line(homeMap, job.route || [sl, dl]));
         if (sl) { L.marker(sl, { icon: HWMap.ICON.store(job.storeId || ''), interactive: false }).addTo(ordLayer); pts.push(sl); }
         if (dl) { L.marker(dl, { icon: HWMap.ICON.home(), interactive: false }).addTo(ordLayer); pts.push(dl); }
-    } else if (idle || !isOnline()) {
-        /* المطاعم القريبة بشعاراتها، حتى يعرف الكابتن أين ينتظر */
-        HWBiz.storeList().forEach(st => { const g = stState.get(st.id); if (g && g.lat != null) L.marker([g.lat, g.lng], { icon: HWMap.ICON.store(st.id), interactive: false, opacity: .9 }).addTo(ordLayer); });
-        if (heatOn && idle) heatSpots().forEach(h => L.circle(h.p, { radius: 350 + h.n * 90, stroke: false, fillColor: '#E8EF44', fillOpacity: Math.min(.6, .2 + h.n * .1), interactive: false }).addTo(ordLayer));
+    } else if (idle) {
+        /* لا تظهر المطاعم إلا مع طلب متاح منها؛ وقت الانتظار تظهر مناطق الطلب فقط عند تشغيلها */
+        if (heatOn) heatSpots().forEach(h => L.circle(h.p, { radius: 350 + h.n * 90, stroke: false, fillColor: '#E8EF44', fillOpacity: Math.min(.6, .2 + h.n * .1), interactive: false }).addTo(ordLayer));
     }
     /* البطاقة السفلية تغطي جزءًا من الخريطة: نضبط العرض على الجزء الظاهر فوقها */
     const sh = ($('cmSheet') && $('cmSheet').offsetHeight) || 300;
@@ -519,10 +529,8 @@ let offerIdx = 0;
 const SV = (d, w) => '<svg viewBox="0 0 24 24" width="' + (w || 20) + '" height="' + (w || 20) + '" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
 const CI = {
     store: SV('<path d="M3 9l1.5-5h15L21 9M4 9v11h16V9M3 9h18"/>'), user: SV('<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'),
-    head: SV('<path d="M4 14v-2a8 8 0 0 1 16 0v2"/><path d="M4 14h3v6H5a1 1 0 0 1-1-1Zm16 0h-3v6h2a1 1 0 0 0 1-1Z"/>'),
     nav: SV('<path d="m3 11 18-8-8 18-2-8-8-2Z"/>', 18), phone: SV('<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2Z"/>', 18),
     bell: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M12 2a6 6 0 0 0-6 6v4l-2 3v1h16v-1l-2-3V8a6 6 0 0 0-6-6Zm-2 17a2 2 0 0 0 4 0Z"/></svg>',
-    fire: '<svg viewBox="0 0 24 24" width="17" height="17" fill="#E8EF44" stroke="#0E3A3B" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 22c4 0 7-2.8 7-6.8 0-3.6-2.4-5.6-3.8-8.4-.6 2-1.6 3-2.8 3.4C12.6 7 11 4.4 8.6 2c.4 3.2-3.6 6.4-3.6 12.2C5 18.8 8 22 12 22Z"/></svg>',
     radar: SV('<circle cx="12" cy="12" r="2.5" fill="currentColor"/><path d="M7.5 7.5a6.4 6.4 0 0 0 0 9M16.5 7.5a6.4 6.4 0 0 1 0 9M4.6 4.6a10.5 10.5 0 0 0 0 14.8M19.4 4.6a10.5 10.5 0 0 1 0 14.8"/>', 24),
     list: SV('<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>', 18),
     info: SV('<circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/>', 18), warn: SV('<path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4M12 17h.01"/>', 18)
@@ -534,14 +542,15 @@ function renderJobs() {
     if (offerIdx >= ofs.length) offerIdx = 0;
     const B = document.body;
     ['off', 'idle', 'offer', 'job'].forEach(m => B.classList.toggle('cap-' + m, mode === m));
-    $('netDot').classList.toggle('on', on);
     $('hdrSub').textContent = on ? 'متصل · ' + me.name.split(' ')[0] : 'غير متصل';
     const o = ofs[offerIdx];
     $('cmTop').innerHTML = mode === 'offer'
         ? '<div class="cm-new"><i></i><span class="bell">' + CI.bell + '</span>طلب جديد' + (ofs.length > 1 ? ' <button type="button" class="cm-next" onclick="offerIdx++;render()">' + (offerIdx + 1) + ' من ' + ofs.length + ' ‹</button>' : '') + '</div><button type="button" class="cm-dec" data-dec="' + H(o.id) + '">رفض</button>'
         : '<button type="button" class="cm-on' + (on ? ' on' : '') + '" onclick="setOnline(' + (!on) + ')" aria-label="تبديل الاتصال"><span class="tg"></span>' + (on ? 'متصل' : 'غير متصل') + '</button>' +
-          '<span class="cm-sp"></span>' + (mode === 'idle' ? '<button type="button" class="cm-chip' + (heatOn ? ' on' : '') + '" id="heatBtn" onclick="toggleHeat()">' + CI.fire + 'مناطق الطلب</button>' : '') +
-          (mode === 'job' ? '<button type="button" class="cm-round" onclick="openSupport()" aria-label="الدعم">' + CI.head + '</button>' : '');   /* دعم سريع أثناء الطلب فقط؛ الدعم العام في «حسابي» */
+          '<span class="cm-sp"></span>';
+    /* الجرس والصورة أعلى الخريطة (الهيدر مخفي في هذه الشاشة)؛ أثناء عرض طلب جديد تختفي حتى يركّز الكابتن */
+    if (mode !== 'offer' && cur === 'screen-jobs') HWHead.place($('cmTop')); else HWHead.place(null);
+    const hb = $('heatBtn'); if (hb) hb.classList.toggle('on', heatOn);
     $('cmSheet').innerHTML = '<div class="cm-grab"></div>' + (mode === 'off' ? offSheet() : mode === 'idle' ? idleSheet() : mode === 'offer' ? offerSheet(o) : jobSheet(a));
     document.documentElement.style.setProperty('--cm-h', $('cmSheet').offsetHeight + 'px');
     renderMapLayers(false);
@@ -594,17 +603,17 @@ function jobSheet(o) {
         '<button type="button" onclick="openJob(\'' + o.id + '\')">' + CI.list + 'التفاصيل</button></div>' +
         (st ? '<button type="button" class="cm-main" data-step="' + st.k + '" data-id="' + o.id + '">' + st.t + '</button>' : '');
 }
-/* الدعم بسرعة من أعلى الخريطة */
+/* الدعم داخل التطبيق. أثناء طلب جارٍ: محادثة برقم الطلب، أو بلاغ سريع يصل للإدارة */
 function openSupport() {
-    const a = active(), msg = 'كابتن ' + me.name + (a ? ' — بخصوص الطلب ' + a.code : '');
-    sheet('<div class="sh-head"><div><small>HIGHWAY</small><h3>تواصل مع الدعم</h3></div></div><div class="sup-list">' +
-        '<a href="https://wa.me/' + SUPPORT_WA + '?text=' + encodeURIComponent(msg) + '" target="_blank" rel="noopener">واتساب الدعم</a>' +
-        '<a href="tel:+' + SUPPORT_WA + '">اتصال بمركز العمليات</a>' +
-        (a ? '<button type="button" onclick="closeSheet();openIssue(\'' + a.id + '\')">الإبلاغ عن مشكلة في طلبي</button>' : '') + '</div>' +
+    const a = active();
+    if (!a) { HWSupport.open(); return; }
+    sheet('<div class="sh-head"><div><small dir="ltr">' + H(a.code) + '</small><h3>الدعم</h3></div></div><div class="sup-list">' +
+        '<button type="button" onclick="closeSheet();HWSupport.open({order:\'' + H(a.code) + '\'})">راسل الدعم بخصوص هذا الطلب</button>' +
+        '<button type="button" onclick="closeSheet();openIssue(\'' + a.id + '\')">الإبلاغ عن مشكلة في الطلب</button>' +
+        '<a href="tel:' + H(CFG.opsPhone || '') + '">اتصال بمركز العمليات</a></div>' +
         '<button type="button" class="ghost-btn wide" onclick="closeSheet()">إغلاق</button>');
 }
 /* ---------- حد النقد: المستحق للشركة من الطلبات غير المسوّاة ---------- */
-const SUPPORT_WA = '962791819432';
 function cashLimit() { const c = HWBiz.setting('cash'); return c.limit != null ? +c.limit : (CFG.cashLimit != null ? CFG.cashLimit : 3); }
 function dueNow() { return HWBiz.r2(mineOrders().filter(o => o.status === 'delivered' && !o.settledAt).reduce((n, o) => n + HWOrders.settle(o).due, 0)); }
 function overLimit() { return dueNow() > cashLimit(); }

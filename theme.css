@@ -121,8 +121,6 @@ body.bar-mini .tabbar{transform:scale(.86) translateY(2px)}
 .act-card .submit-btn{background:var(--yellow) !important;color:var(--ink) !important}
 .act-btns a,.act-btns button{background:transparent !important;border:1.5px solid rgba(243,240,231,.35) !important;color:var(--cream) !important}
 .act-info div{color:var(--ink)}
-.net-dot{background:var(--cream-line) !important}.net-dot.on{background:var(--yellow) !important;box-shadow:none !important}
-.pill.ok{background:var(--teal) !important;color:var(--ink) !important}.pill.bad{background:var(--white) !important;color:var(--ink-soft) !important}
 
 /* ===== شريط الحالة العائم والتنبيه ===== */
 .live-bar{background:var(--ink) !important;color:var(--cream) !important;box-shadow:0 14px 30px -18px rgba(14,58,59,.7) !important;border:0 !important}
@@ -144,9 +142,6 @@ body.bar-mini .tabbar{transform:scale(.86) translateY(2px)}
 .mk-store img{border:3px solid var(--yellow) !important;background:var(--white) !important}
 
 /* ===== التنبيهات ===== */
-.hw-sound-pill{position:fixed;top:calc(78px + env(safe-area-inset-top));inset-inline:0;margin-inline:auto;width:max-content;max-width:calc(100% - 32px);z-index:96;display:none;align-items:center;gap:8px;border:0;border-radius:999px;padding:10px 16px;background:var(--yellow);color:var(--ink);font:inherit;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 10px 24px -12px rgba(14,58,59,.45);animation:pillPulse 1.8s ease-in-out infinite}
-.hw-sound-pill.show{display:flex}.hw-sound-pill svg{width:18px;height:18px}
-@keyframes pillPulse{50%{transform:scale(1.04)}}
 .hw-sa-warn{position:fixed;inset-inline:12px;top:calc(78px + env(safe-area-inset-top));z-index:97;background:var(--ink);color:var(--cream);font-size:12.5px;font-weight:700;line-height:1.6;border-radius:16px;padding:12px 14px;text-align:center}
 
 /* ===== المظهر واللغة (hw-ui.js) ===== */
@@ -167,7 +162,6 @@ html[dir="ltr"] body{font-family:"Tajawal","Segoe UI",system-ui,sans-serif}
 .hw-steps{margin:6px 0 10px;padding-inline-start:20px;line-height:2;font-size:14px;color:var(--ink)}
 /* ===== محرر المنيو المشترك (hw-menued.js) ===== */
 /* زر تفعيل الصوت: أسفل الشاشة فوق شريط التنقل، لا يغطي العناوين */
-.hw-sound-pill{top:auto !important;bottom:calc(98px + env(safe-area-inset-bottom)) !important;box-shadow:0 10px 26px -8px rgba(14,58,59,.45) !important}
 /* التذييل لا يختفي تحت شريط التنقل، ووسوم البطاقات بخط التطبيق */
 .oc .oc-meta .oc-tag,.oc .oc-top .oc-store{background:rgba(37,206,209,.16) !important;color:#0E3A3B !important;border-radius:99px;padding:3px 10px;font-size:11.5px;font-weight:800;font-family:inherit}
 .act-btns a,.act-btns button{display:inline-flex;align-items:center;justify-content:center;gap:6px}.act-btns svg{flex:none}.drop-note span svg{width:15px;height:15px;vertical-align:-3px}
@@ -188,9 +182,6 @@ body.cap-off .cap-map .lmap{filter:grayscale(.75) brightness(1.04) opacity(.75)}
 .cm-on .tg{width:46px;height:28px;border-radius:99px;background:rgba(14,58,59,.18);position:relative;transition:background .2s}
 .cm-on .tg::after{content:"";position:absolute;top:3px;inset-inline-end:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.2);transition:inset-inline-end .2s}
 .cm-on.on{background:#0E3A3B;color:#F5EDE3}.cm-on.on .tg{background:#E8EF44}.cm-on.on .tg::after{inset-inline-end:21px;background:#0E3A3B}
-.cm-chip{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:99px;background:#fff;color:#0E3A3B;font:inherit;font-weight:800;font-size:13px;padding:10px 14px;box-shadow:0 8px 20px rgba(14,58,59,.18);cursor:pointer}
-.cm-chip.on{box-shadow:0 8px 20px rgba(14,58,59,.18),inset 0 0 0 2px #E8EF44}
-.cm-round{width:44px;height:44px;border-radius:50%;border:0;background:#fff;color:#0E3A3B;display:grid;place-items:center;box-shadow:0 8px 20px rgba(14,58,59,.18);cursor:pointer;flex:none}
 .cm-me{position:fixed;z-index:25;inset-inline-start:14px;width:44px;height:44px;border-radius:50%;border:0;background:#fff;color:#0E3A3B;display:grid;place-items:center;box-shadow:0 8px 20px rgba(14,58,59,.18);cursor:pointer;bottom:calc(var(--cm-h,330px) + 14px)}
 .cm-me svg{width:22px;height:22px}
 .cm-new{display:inline-flex;align-items:center;gap:8px;background:#0E3A3B;color:#E8EF44;font-weight:800;font-size:15px;border-radius:99px;padding:10px 16px;box-shadow:0 8px 20px rgba(14,58,59,.3)}
@@ -240,8 +231,6 @@ body.cap-off .cap-map .lmap{filter:grayscale(.75) brightness(1.04) opacity(.75)}
 .cm-job .eta{flex:none;background:#E8EF44;border-radius:14px;padding:6px 12px;font-weight:900;font-size:22px;white-space:nowrap}.cm-job .eta small{font-size:12px}
 .cm-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
 .cm-btns a,.cm-btns button{display:flex;align-items:center;justify-content:center;gap:6px;height:46px;border:0;border-radius:14px;background:#F3F0E7;color:#0E3A3B;font:inherit;font-weight:800;font-size:13.5px;text-decoration:none;cursor:pointer}
-.sup-list{display:grid;gap:8px;margin:4px 0 12px}
-.sup-list a,.sup-list button{display:block;text-align:center;border:0;border-radius:16px;background:#F3F0E7;color:#0E3A3B;font:inherit;font-weight:800;font-size:15px;padding:15px;text-decoration:none;cursor:pointer}
 /* الملاحة وعدم الاستلام */
 .ns-steps{margin:0 0 12px;padding-inline-start:20px;display:grid;gap:6px;font-weight:700;font-size:14px}.ns-steps a{font-weight:800;color:#0E3A3B;text-decoration:underline}
 .ns-photo span{display:block;background:rgba(37,206,209,.14);border-radius:12px;padding:8px 12px;font-weight:800;font-size:13px;margin-bottom:8px}

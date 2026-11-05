@@ -59,7 +59,6 @@
 :root[data-theme="dark"] .tb{--ink:#0E3A3B;--teal-800:#0E3A3B;--teal-900:#0E3A3B;--ink-soft:rgba(14,58,59,.72);--white:#fff;--surface:#fff;--cream:#F3F0E7;--cream-line:#E7E2D3;color:#0E3A3B}
 :root[data-theme="dark"] .qty button{--ink:#0E3A3B;--teal-800:#0E3A3B;--teal-900:#0E3A3B;--ink-soft:rgba(14,58,59,.72);--white:#fff;--surface:#fff;--cream:#F3F0E7;--cream-line:#E7E2D3;color:#0E3A3B}
 :root[data-theme="dark"] .field textarea{background:var(--surface)}
-:root[data-theme="dark"] .net-dot.on{--ink:#0E3A3B;--teal-800:#0E3A3B;--teal-900:#0E3A3B;--ink-soft:rgba(14,58,59,.72);--white:#fff;--surface:#fff;--cream:#F3F0E7;--cream-line:#E7E2D3;color:#0E3A3B}
 :root[data-theme="dark"] .sw::after{background:var(--surface)}
 :root[data-theme="dark"] .sw.on{--ink:#0E3A3B;--teal-800:#0E3A3B;--teal-900:#0E3A3B;--ink-soft:rgba(14,58,59,.72);--white:#fff;--surface:#fff;--cream:#F3F0E7;--cream-line:#E7E2D3;color:#0E3A3B}
 :root[data-theme="dark"] .act-card{background:#0F4446;--cream:#F3F0E7;--white:#fff;--surface:rgba(255,255,255,.14)}
@@ -107,14 +106,12 @@
 :root[data-theme="dark"] .pay-big .big{--ink:#0E3A3B;--teal-800:#0E3A3B;--teal-900:#0E3A3B;--ink-soft:rgba(14,58,59,.72);--white:#fff;--surface:#fff;--cream:#F3F0E7;--cream-line:#E7E2D3;color:#0E3A3B}
 :root[data-theme="dark"] .act-card{background:#0F4446!important;--cream:#F3F0E7;--white:#fff;--surface:rgba(255,255,255,.14)}
 :root[data-theme="dark"] .act-card .submit-btn{--ink:#0E3A3B;--teal-800:#0E3A3B;--teal-900:#0E3A3B;--ink-soft:rgba(14,58,59,.72);--white:#fff;--surface:#fff;--cream:#F3F0E7;--cream-line:#E7E2D3;color:#0E3A3B}
-:root[data-theme="dark"] .net-dot.on{--ink:#0E3A3B;--teal-800:#0E3A3B;--teal-900:#0E3A3B;--ink-soft:rgba(14,58,59,.72);--white:#fff;--surface:#fff;--cream:#F3F0E7;--cream-line:#E7E2D3;color:#0E3A3B}
 :root[data-theme="dark"] .pill.ok{--ink:#0E3A3B;--teal-800:#0E3A3B;--teal-900:#0E3A3B;--ink-soft:rgba(14,58,59,.72);--white:#fff;--surface:#fff;--cream:#F3F0E7;--cream-line:#E7E2D3;color:#0E3A3B}
 :root[data-theme="dark"] .live-bar{background:#0F4446!important;--cream:#F3F0E7;--white:#fff;--surface:rgba(255,255,255,.14)}
 :root[data-theme="dark"] .lv-dot{--ink:#0E3A3B;--teal-800:#0E3A3B;--teal-900:#0E3A3B;--ink-soft:rgba(14,58,59,.72);--white:#fff;--surface:#fff;--cream:#F3F0E7;--cream-line:#E7E2D3;color:#0E3A3B}
 :root[data-theme="dark"] .toast{background:#0F4446!important;--cream:#F3F0E7;--white:#fff;--surface:rgba(255,255,255,.14)}
 :root[data-theme="dark"] .mk-cap div{background:#0F4446!important;--cream:#F3F0E7;--white:#fff;--surface:rgba(255,255,255,.14)}
 :root[data-theme="dark"] .demo-banner{--ink:#0E3A3B;--teal-800:#0E3A3B;--teal-900:#0E3A3B;--ink-soft:rgba(14,58,59,.72);--white:#fff;--surface:#fff;--cream:#F3F0E7;--cream-line:#E7E2D3;color:#0E3A3B}
-:root[data-theme="dark"] .hw-sound-pill{--ink:#0E3A3B;--teal-800:#0E3A3B;--teal-900:#0E3A3B;--ink-soft:rgba(14,58,59,.72);--white:#fff;--surface:#fff;--cream:#F3F0E7;--cream-line:#E7E2D3;color:#0E3A3B}
 :root[data-theme="dark"] .hw-sa-warn{background:#0F4446;--cream:#F3F0E7;--white:#fff;--surface:rgba(255,255,255,.14)}
 :root[data-theme="dark"] .hw-seg button.on{--ink:#0E3A3B;--teal-800:#0E3A3B;--teal-900:#0E3A3B;--ink-soft:rgba(14,58,59,.72);--white:#fff;--surface:#fff;--cream:#F3F0E7;--cream-line:#E7E2D3;color:#0E3A3B}
 :root[data-theme="dark"] .hw-nag{--ink:#0E3A3B;--teal-800:#0E3A3B;--teal-900:#0E3A3B;--ink-soft:rgba(14,58,59,.72);--white:#fff;--surface:#fff;--cream:#F3F0E7;--cream-line:#E7E2D3;color:#0E3A3B}
@@ -125,8 +122,6 @@
 :root[data-theme="dark"] .cm-on.on{background:#0F4446;--cream:#F3F0E7;--white:#fff;--surface:rgba(255,255,255,.14)}
 :root[data-theme="dark"] .cm-on.on .tg{--ink:#0E3A3B;--teal-800:#0E3A3B;--teal-900:#0E3A3B;--ink-soft:rgba(14,58,59,.72);--white:#fff;--surface:#fff;--cream:#F3F0E7;--cream-line:#E7E2D3;color:#0E3A3B}
 :root[data-theme="dark"] .cm-on.on .tg::after{background:#0F4446;--cream:#F3F0E7;--white:#fff;--surface:rgba(255,255,255,.14)}
-:root[data-theme="dark"] .cm-chip{background:var(--surface);color:var(--ink)}
-:root[data-theme="dark"] .cm-round{background:var(--surface);color:var(--ink)}
 :root[data-theme="dark"] .cm-me{background:var(--surface);color:var(--ink)}
 :root[data-theme="dark"] .cm-new{background:#0F4446;--cream:#F3F0E7;--white:#fff;--surface:rgba(255,255,255,.14)}
 :root[data-theme="dark"] .cm-new>i{--ink:#0E3A3B;--teal-800:#0E3A3B;--teal-900:#0E3A3B;--ink-soft:rgba(14,58,59,.72);--white:#fff;--surface:#fff;--cream:#F3F0E7;--cream-line:#E7E2D3;color:#0E3A3B}

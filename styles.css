@@ -594,7 +594,6 @@ body:not(.authed) .tabbar,body:not(.authed) .live-bar{display:none;}
 /* طلباتي */
 
 /* ===== تطبيق الكباتن ===== */
-.net-dot{width:12px;height:12px;border-radius:50%;background:#cbd5d5;margin-inline-start:auto;margin-inline-end:6px;flex:none}.net-dot.on{background:var(--yellow);box-shadow:0 0 0 4px rgba(232,239,68,.35)}
 .sw{position:relative;width:58px;height:32px;border-radius:999px;border:0;background:#cbd5d5;cursor:pointer;flex:none;transition:background .2s}
 .sw::after{content:"";position:absolute;top:3px;inset-inline-start:3px;width:26px;height:26px;border-radius:50%;background:#fff;transition:transform .25s var(--ease-spring);box-shadow:0 2px 6px rgba(0,0,0,.25)}
 .sw.on{background:var(--yellow)}.sw.on::after{transform:translateX(-26px)}
