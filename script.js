@@ -234,7 +234,7 @@ function checkAccount() {
 function myDoc() { return me ? caps.get(me.id) || {} : {}; }
 function isOnline() { return !!myDoc().online; }
 let locChecked = false;
-function locDenied() { HWOrders.toast('لا يمكنك الاتصال قبل السماح بالموقع: الإعدادات ← Safari ← الموقع ← السماح'); }
+function locDenied() { HWOrders.toast('لا يمكنك الاتصال قبل السماح بالموقع. ' + HWNative.locHelp()); if (HWNative.is) setTimeout(HWNative.openSettings, 1800); }
 function setOnline(v) {
     if (!v && active()) { HWOrders.toast('أنهِ طلبك الحالي قبل إنهاء الوردية'); return; }
     if (v && !locChecked) {   /* لا اتصال بدون إذن الموقع */
@@ -245,18 +245,22 @@ function setOnline(v) {
     }
     const start = myDoc().shiftStart;
     caps.patch(me.id, v ? { online: true, lastSeen: Date.now(), shiftStart: Date.now() } : { online: false, shiftStart: 0 }); buzz(15);
-    if (v) { HWNotify.unlock(); HWNotify.play('status'); startGps(false); pushLoc(true); } else { HWNotify.stop('offer'); if (start) shiftSheet(start); }
+    stopGps(); startGps(false);   /* في التطبيق: يبدأ الموقع المستمر في الخلفية مع الاتصال ويتوقف مع إنهاء الوردية */
+    if (v) { HWNotify.unlock(); HWNotify.play('status'); pushLoc(true); } else { HWNotify.stop('offer'); if (start) shiftSheet(start); }
     HWNotify.keepAwake(v); render();
 }
 /* مشاركة الموقع مع مركز العمليات إلزامية أثناء الاتصال (لا يستطيع الكابتن إخفاءها) */
 const shareLoc = true; let myPos = null, myAcc = 0;
 /* تتبّع موقع الكابتن: يظهر دائمًا على خريطته، ويُرسل للمنسق فقط وهو متصل */
+function gotPos(lat, lng, acc) { myPos = [lat, lng]; myAcc = acc || 0; updateMeMarker(myPos, myAcc); pushLoc(false); arriveCheck(); }
+function gpsDenied() { gpsWatch = null; locChecked = false; if (me && isOnline() && !active()) { caps.patch(me.id, { online: false }); render(); } locDenied(); }
 function startGps(manual) {
-    if (!navigator.geolocation || gpsWatch != null) return;
-    gpsWatch = navigator.geolocation.watchPosition(p => {
-        myPos = [p.coords.latitude, p.coords.longitude]; myAcc = p.coords.accuracy || 0;
-        updateMeMarker(myPos, myAcc); pushLoc(false); arriveCheck();
-    }, (e) => { if (e && e.code === 1) { gpsWatch = null; locChecked = false; if (me && isOnline() && !active()) { caps.patch(me.id, { online: false }); render(); } locDenied(); } else if (manual) HWOrders.toast('تعذر الوصول إلى موقعك'); },
+    if (gpsWatch != null) return;
+    /* التطبيق الحقيقي وهو متصل: موقع مستمر حتى والشاشة مقفلة (إشعار ثابت "أنت متصل") */
+    if (HWNative.bg && me && isOnline()) { gpsWatch = HWNative.watch(p => gotPos(p.lat, p.lng, p.acc), e => { if (e === 'denied') { if (gpsWatch) gpsWatch.stop(); gpsDenied(); } }); return; }
+    if (!navigator.geolocation) return;
+    gpsWatch = navigator.geolocation.watchPosition(p => gotPos(p.coords.latitude, p.coords.longitude, p.coords.accuracy),
+    (e) => { if (e && e.code === 1) gpsDenied(); else if (manual) HWOrders.toast('تعذر الوصول إلى موقعك'); },
     { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
 }
 function pushLoc(force) {
@@ -267,7 +271,9 @@ function pushLoc(force) {
     /* التتبّع الحي: موقع الكابتن يُكتب على طلبه النشط؛ المطعم والعميل يريان وقت الوصول، وأيقونته على خريطة العميل بعد الاستلام فقط، فيراه صاحب الطلب وحده ويختفي بعد التسليم */
     if (job) HWOrders.patchLite(job.id, { capLoc: { lat: +myPos[0].toFixed(6), lng: +myPos[1].toFixed(6), at: Date.now() } });
 }
-function stopGps() { if (gpsWatch != null) { navigator.geolocation.clearWatch(gpsWatch); gpsWatch = null; } }
+/* التطبيق الحقيقي: الموقع المستمر يعمل ما دام الكابتن متصلًا (حتى بعد إعادة فتح التطبيق) */
+function syncGpsMode() { if (!HWNative.bg || !me) return; const nat = gpsWatch != null && typeof gpsWatch === 'object'; if (isOnline() !== nat) { stopGps(); startGps(false); } }
+function stopGps() { if (gpsWatch != null) { if (typeof gpsWatch === 'object' && gpsWatch.stop) gpsWatch.stop(); else navigator.geolocation.clearWatch(gpsWatch); gpsWatch = null; } }
 setInterval(() => { if (me && isOnline()) caps.patch(me.id, { lastSeen: Date.now() }); }, 30000);
 /* أثناء المهمة: يُحدَّث الموقع على الطلب كل 15 ثانية حتى لو لم يتحرك الكابتن، فيبقى وقت الوصول ظاهرًا للمطعم والعميل */
 setInterval(() => { const j = me && isOnline() && active(); if (!j) return; if (!j.capLoc || Date.now() - (j.capLoc.at || 0) > 14000) pushLoc(true); }, 5000);
@@ -749,7 +755,7 @@ document.addEventListener('DOMContentLoaded', () => {
     introCtl = skip ? null : initIntroVideo();
     $('loginForm').addEventListener('submit', submitLogin);
     $('enterBtn').addEventListener('click', () => { if (me) finishLogin(); else openLogin(); });
-    caps.subscribe(() => { if (me) { checkAccount(); render(); fillAv(); } }); HWBiz.onMedia(() => { if (me) fillAv(); });
+    caps.subscribe(() => { if (me) { checkAccount(); render(); fillAv(); syncGpsMode(); } }); HWBiz.onMedia(() => { if (me) fillAv(); });
     stState.subscribe(() => { if (me) render(); }); HWBiz.storesCol.subscribe(() => { if (me) render(); });
     HWBiz.targets.subscribe(() => { if (me) render(); }); HWBiz.announcementsCol.subscribe(() => { if (me) render(); });
     settingsCol.subscribe(l => { const d = l.filter(x => x.id === 'dispatch')[0]; autoMode = !d || d.auto !== false; if (me) render(); });
