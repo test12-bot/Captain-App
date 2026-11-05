@@ -151,6 +151,7 @@ function finishLogin() {
    الإبلاغ عن مشكلة، الأهداف والمكافآت، الأرباح والتسوية النقدية.
    ========================================================= */
 const CFG = window.HW_CONFIG;
+document.documentElement.classList.add('app-cap');
 const KEY = 'hwk-user', SEEN_KEY = 'hwk-seen';
 const $ = (id) => document.getElementById(id);
 const H = HWOrders.esc, money = HWOrders.money;
@@ -214,7 +215,6 @@ async function submitLogin(ev) {
     await new Promise(r => setTimeout(r, 300)); btn.classList.remove('loading');
     const c = caps.list().filter(x => x.phone === phone && x.pin === hash)[0];
     if (!c) { $('loginPassField').classList.add('invalid'); err.textContent = 'الرقم أو الرمز غير صحيح'; return; }
-    if (c.active === false) { err.textContent = 'حسابك موقوف، تواصل مع الدعم'; return; }
     try { localStorage.setItem(KEY, JSON.stringify({ id: c.id, name: c.name, phone: c.phone })); } catch (e) {}
     applyUser({ id: c.id, name: c.name, phone: c.phone }); finishLogin(); render(); setTimeout(() => { ensureMap(); startGps(false); renderMapLayers(true); homeMap && homeMap.invalidateSize(); }, 700);
 }
@@ -226,16 +226,38 @@ let acctChecked = false;
 function checkAccount() {
     if (!me || !caps.loaded() || acctChecked || !caps.list().length) return;
     const d = caps.get(me.id);
-    if (d && d.active !== false && (d.name || d.phone)) return;
+    if (d && (d.name || d.phone)) { suspWatch(d); return; }   /* الحساب الموقوف لا يُخرَج: يبقى داخل التطبيق ويرى السبب */
     acctChecked = true;
-    HWOrders.toast(d && d.active === false ? 'حسابك موقوف، تواصل مع الإدارة' : 'حسابك غير موجود، سجّل الدخول من جديد');
+    HWOrders.toast('حسابك غير موجود، سجّل الدخول من جديد');
     setTimeout(() => { try { localStorage.removeItem(KEY); } catch (e) {} location.reload(); }, 2500);
 }
 function myDoc() { return me ? caps.get(me.id) || {} : {}; }
 function isOnline() { return !!myDoc().online; }
 let locChecked = false;
 function locDenied() { HWOrders.toast('لا يمكنك الاتصال قبل السماح بالموقع. ' + HWNative.locHelp()); if (HWNative.is) setTimeout(HWNative.openSettings, 1800); }
+/* =========================================================
+   الحساب الموقوف: لا تصله طلبات جديدة، لكنه يبقى داخل التطبيق
+   ويرى بوضوح أن حسابه موقوف، وعند الضغط: السبب ووسائل التواصل مع الدعم
+   ========================================================= */
+function suspended() { return myDoc().active === false; }
+let suspPrev = null;
+function suspWatch(d) {
+    const s = d.active === false;
+    if (suspPrev !== null && s !== suspPrev) { if (s) { HWNotify.stop('offer'); suspendSheet(); buzz([40, 60, 40]); } else { HWOrders.toast('تم تفعيل حسابك، يمكنك الاتصال واستقبال الطلبات'); HWNotify.play('status'); } }
+    suspPrev = s; document.body.classList.toggle('cap-susp', s);
+    const b = $('suspBar'); if (b) b.hidden = !s;
+}
+function suspendSheet() {
+    const d = myDoc(), at = d.suspendedAt ? new Date(d.suspendedAt) : null, ph = String(CFG.opsPhone || '').replace(/[^\d+]/g, '');
+    sheet('<div class="susp"><span class="susp-ic">' + LOCK + '</span><h3>حسابك موقوف مؤقتًا</h3>' +
+        '<p>لا تصلك طلبات جديدة حتى تعيد الإدارة تفعيل حسابك. أرباحك وسجل طلباتك محفوظان كما هما.</p>' +
+        '<div class="susp-why"><small>سبب الإيقاف</small><b>' + H(d.suspendReason || 'لم تُحدد الإدارة سببًا بعد') + '</b>' + (at ? '<em>منذ ' + at.toLocaleDateString('ar-JO', { day: 'numeric', month: 'long' }) + ' · ' + at.toLocaleTimeString('ar-JO', { hour: 'numeric', minute: '2-digit' }) + '</em>' : '') + '</div>' +
+        (active() ? '<p class="susp-note">أكمل طلبك الحالي كالمعتاد، ولن تصلك طلبات بعده.</p>' : '') +
+        '<button type="button" class="submit-btn" onclick="closeSheet();HWSupport.open()"><span class="btn-label">تواصل مع الدعم</span></button>' +
+        (ph ? '<a class="ghost-btn wide susp-call" href="tel:' + H(ph) + '">' + CI.phone + 'اتصال بالإدارة</a>' : '') + '</div>');
+}
 function setOnline(v) {
+    if (v && suspended()) { suspendSheet(); return; }
     if (!v && active()) { HWOrders.toast('أنهِ طلبك الحالي قبل إنهاء الوردية'); return; }
     if (v && !locChecked) {   /* لا اتصال بدون إذن الموقع */
         if (!navigator.geolocation) { HWOrders.toast('جهازك لا يدعم تحديد الموقع'); return; }
@@ -563,6 +585,7 @@ const CI = {
     list: SV('<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>', 18),
     info: SV('<circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/>', 18), warn: SV('<path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4M12 17h.01"/>', 18)
 };
+const LOCK = SV('<rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><path d="M12 14.5v2.5"/>', 22);
 const kmMin = km => Math.max(1, Math.round(km / ((CFG.capKmh || 25) / 60)));
 function capMode() { const on = isOnline(), a = active(); return a ? 'job' : !on ? 'off' : offers().length ? 'offer' : 'idle'; }   /* طلب مسند له يظهر دائمًا، حتى لو كان غير متصل */
 function renderJobs() {
@@ -570,11 +593,11 @@ function renderJobs() {
     if (offerIdx >= ofs.length) offerIdx = 0;
     const B = document.body;
     ['off', 'idle', 'offer', 'job'].forEach(m => B.classList.toggle('cap-' + m, mode === m));
-    $('hdrSub').textContent = on ? 'متصل · ' + me.name.split(' ')[0] : 'غير متصل';
+    $('hdrSub').textContent = suspended() ? 'الحساب موقوف' : on ? 'متصل · ' + me.name.split(' ')[0] : 'غير متصل';
     const o = ofs[offerIdx];
     $('cmTop').innerHTML = mode === 'offer'
         ? '<div class="cm-new"><i></i><span class="bell">' + CI.bell + '</span>طلب جديد' + (ofs.length > 1 ? ' <button type="button" class="cm-next" onclick="offerIdx++;render()">' + (offerIdx + 1) + ' من ' + ofs.length + ' ‹</button>' : '') + '</div><button type="button" class="cm-dec" data-dec="' + H(o.id) + '">رفض</button>'
-        : '<button type="button" class="cm-on' + (on ? ' on' : '') + '" onclick="setOnline(' + (!on) + ')" aria-label="تبديل الاتصال"><span class="tg"></span>' + (on ? 'متصل' : 'غير متصل') + '</button>' +
+        : suspended() && !on ? '<button type="button" class="cm-susp" onclick="suspendSheet()">' + LOCK + 'الحساب موقوف</button>' : '<button type="button" class="cm-on' + (on ? ' on' : '') + '" onclick="setOnline(' + (!on) + ')" aria-label="تبديل الاتصال"><span class="tg"></span>' + (on ? 'متصل' : 'غير متصل') + '</button>' +
           '<span class="cm-sp"></span>';
     /* الجرس والصورة أعلى الخريطة (الهيدر مخفي في هذه الشاشة)؛ أثناء عرض طلب جديد تختفي حتى يركّز الكابتن */
     if (mode !== 'offer' && cur === 'screen-jobs') HWHead.place($('cmTop')); else HWHead.place(null);
@@ -594,6 +617,8 @@ function dueLine() {
 function todayStats() { const d0 = new Date(); d0.setHours(0, 0, 0, 0); return shiftStats(d0.getTime()); }
 function offSheet() {
     const t = todayStats();
+    if (suspended()) return '<button type="button" class="cm-wait susp-card" onclick="suspendSheet()"><span class="cm-pulse off">' + LOCK + '</span><div><b>حسابك موقوف مؤقتًا</b><small>لا تصلك طلبات الآن · اضغط لمعرفة السبب</small></div></button>' +
+        '<div class="cm-stats two"><div><small>ربح اليوم</small><b>' + money(t.net) + '</b></div><div><small>طلبات اليوم</small><b>' + t.n + '</b></div></div>' + dueLine();
     /* زر واحد للوردية: مفتاح "متصل" أعلى الشاشة */
     return '<div class="cm-wait"><span class="cm-pulse off">' + CI.radar + '</span><div><b>أنت غير متصل</b><small>شغّل «متصل» في الأعلى لتصلك الطلبات القريبة منك</small></div></div>' +
         '<div class="cm-stats two"><div><small>ربح اليوم</small><b>' + money(t.net) + '</b></div><div><small>طلبات اليوم</small><b>' + t.n + '</b></div></div>' + dueLine();
