@@ -403,23 +403,30 @@ function activeCard(o) {
    الصورة تُحفظ لكل طلب، وتظهر للإدارة في تفاصيل الطلب.
    ========================================================= */
 let pickQ = null;
-function needPickPic(ids) { return !window.HW_SKIP_PICKPIC && ids.some(i => { const x = HWOrders.get(i); return x && !x.pickPicAt; }); }
-function pickPhotoSheet(ids, then) {
-    pickQ = { ids, then };
+/* صورتان إلزاميتان: عند الاستلام من المتجر (pickpic) وعند التسليم للعميل (dlvpic) */
+const PIC = {
+    pickpic: { at: 'pickPicAt', ev: 'pick_photo', t: 'صوّر الطلب لتأكيد الاستلام', p: 'صورة واضحة للطلب بيدك أو على المقعد', many: '، صورة واحدة لكل الطلبات تكفي', ok: '✓ تم تأكيد الاستلام بالصورة' },
+    dlvpic: { at: 'dlvPicAt', ev: 'dlv_photo', t: 'صوّر الطلب لتأكيد التسليم', p: 'صورة للطلب بيد العميل أو على الباب، بدون تصوير وجه العميل', many: '', ok: '✓ تم حفظ صورة التسليم' }
+};
+function needPic(kind, ids) { return !window.HW_SKIP_PICKPIC && ids.some(i => { const x = HWOrders.get(i); return x && !x[PIC[kind].at]; }); }
+function needPickPic(ids) { return needPic('pickpic', ids); }
+function pickPhotoSheet(ids, then, kind) {
+    kind = kind || 'pickpic'; const P = PIC[kind];
+    pickQ = { ids, then, kind };
     const o = HWOrders.get(ids[0]) || {};
-    sheet('<div class="sh-head"><div><small>' + H(ids.length > 1 ? ids.length + ' طلبات · ' + (o.storeName || '') : o.code || '') + '</small><h3>صوّر الطلب لتأكيد الاستلام</h3></div></div>' +
-        '<div class="pk-shot"><span class="pk-ic">' + CAM + '</span><p>صورة واضحة للطلب بيدك أو على المقعد' + (ids.length > 1 ? '، صورة واحدة لكل الطلبات تكفي' : '') + '. تحميك وتحمي المتجر إذا صار أي خلاف.</p><div class="pk-prev" id="pkPrev"></div></div>' +
+    sheet('<div class="sh-head"><div><small>' + H(ids.length > 1 ? ids.length + ' طلبات · ' + (o.storeName || '') : o.code || '') + '</small><h3>' + P.t + '</h3></div></div>' +
+        '<div class="pk-shot"><span class="pk-ic">' + CAM + '</span><p>' + P.p + (ids.length > 1 ? P.many : '') + '. تحميك وتحمي ' + (kind === 'dlvpic' ? 'العميل' : 'المتجر') + ' إذا صار أي خلاف.</p><div class="pk-prev" id="pkPrev"></div></div>' +
         '<label class="submit-btn file-btn pk-btn"><span class="btn-label">' + CAM + 'التقط الصورة</span><input type="file" accept="image/*" capture="environment" onchange="pickPhoto(this.files[0])" hidden></label>');
 }
 function pickPhoto(file) {
     if (!file || !pickQ) return;
-    const q = pickQ, fr = new FileReader();
+    const q = pickQ, P = PIC[q.kind || 'pickpic'], fr = new FileReader();
     fr.onload = () => { const im = new Image(); im.onload = () => {
         const k = Math.min(1, 900 / Math.max(im.width, im.height)), c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
         c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
         const data = c.toDataURL('image/jpeg', .6), at = Date.now(), pv = $('pkPrev'); if (pv) pv.innerHTML = '<img src="' + data + '" alt="">';
-        Promise.all(q.ids.map(i => HWBiz.putDoc('pickpic', i, { data, at, by: me.id }).then(() => HWOrders.update(i, { pickPicAt: at }, 'pick_photo'))))
-            .then(() => { buzz(20); pickQ = null; closeSheet(); HWOrders.toast('✓ تم تأكيد الاستلام بالصورة'); q.then(); })
+        Promise.all(q.ids.map(i => HWBiz.putDoc(q.kind || 'pickpic', i, { data, at, by: me.id }).then(() => HWOrders.update(i, { [P.at]: at }, P.ev))))
+            .then(() => { buzz(20); pickQ = null; closeSheet(); HWOrders.toast(P.ok); q.then(); })
             .catch(() => HWOrders.toast('تعذّر حفظ الصورة، حاول مجددًا'));
     }; im.src = fr.result; };
     fr.readAsDataURL(file);
@@ -430,6 +437,7 @@ function stepAction(k, id) {
         const ids = k === 'pickAll' ? [o].concat(siblings(o)).filter(x => !HWOrders.isMarket(x)).map(x => x.id) : [id];
         if (needPickPic(ids)) { pickPhotoSheet(ids, () => stepAction(k, id)); return; }
     }
+    if (k === 'done' && needPic('dlvpic', [id])) { pickPhotoSheet([id], () => stepAction(k, id), 'dlvpic'); return; }
     const s = HWOrders.settle(o);
     if (k === 'arrS') { HWOrders.update(id, { arrivedStore: true }, 'arrived_store'); siblings(o).filter(x => !x.arrivedStore).forEach(x => HWOrders.update(x.id, { arrivedStore: true }, 'arrived_store')); }
     else if (k === 'pickAll') { [o].concat(siblings(o)).filter(x => !HWOrders.isMarket(x)).forEach(x => confirmPick(x.id)); HWOrders.toast('✓ استلمت كل طلبات ' + (o.storeName || 'المطعم')); }
@@ -775,7 +783,7 @@ function settleCard() {
 }
 function countTxt(n) { return n === 1 ? 'طلب واحد' : n === 2 ? 'طلبان' : n + ' طلبات'; }
 function renderProfile() {
-    $('pfGps').textContent = 'إلزامية أثناء الاتصال';
+    $('pfGps').textContent = 'دائمًا';
     const r = HWBiz.captainRating(me.id, orders);
     $('pfRate').textContent = r.n ? '★ ' + r.avg.toFixed(1) + ' (' + r.n + ')' : 'لا يوجد بعد';
 }
