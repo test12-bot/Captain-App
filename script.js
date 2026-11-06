@@ -398,8 +398,38 @@ function activeCard(o) {
         '<div class="act-btns"><a href="' + H(navUrl(o)) + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 18-8-8 18-2-8-8-2Z"/></svg> افتح الخريطة</a>' + (phone ? '<a href="tel:' + H(phone) + '"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2Z"/></svg> ' + (toStore ? 'اتصل بالمتجر' : 'اتصال') + '</a>' : '') + '<button type="button" onclick="openJob(\'' + o.id + '\')">' + CI.list + 'التفاصيل</button></div>' +
         (st ? '<button type="button" class="submit-btn" style="margin-top:12px" data-step="' + st.k + '" data-id="' + o.id + '"><span class="btn-label">' + st.t + '</span></button>' : '') + '</div>';
 }
+/* =========================================================
+   صورة الاستلام (إلزامية): بعد أن يستلم الكابتن الطلب يصوّره، فيتأكد الاستلام.
+   الصورة تُحفظ لكل طلب، وتظهر للإدارة في تفاصيل الطلب.
+   ========================================================= */
+let pickQ = null;
+function needPickPic(ids) { return !window.HW_SKIP_PICKPIC && ids.some(i => { const x = HWOrders.get(i); return x && !x.pickPicAt; }); }
+function pickPhotoSheet(ids, then) {
+    pickQ = { ids, then };
+    const o = HWOrders.get(ids[0]) || {};
+    sheet('<div class="sh-head"><div><small>' + H(ids.length > 1 ? ids.length + ' طلبات · ' + (o.storeName || '') : o.code || '') + '</small><h3>صوّر الطلب لتأكيد الاستلام</h3></div></div>' +
+        '<div class="pk-shot"><span class="pk-ic">' + CAM + '</span><p>صورة واضحة للطلب بيدك أو على المقعد' + (ids.length > 1 ? '، صورة واحدة لكل الطلبات تكفي' : '') + '. تحميك وتحمي المتجر إذا صار أي خلاف.</p><div class="pk-prev" id="pkPrev"></div></div>' +
+        '<label class="submit-btn file-btn pk-btn"><span class="btn-label">' + CAM + 'التقط الصورة</span><input type="file" accept="image/*" capture="environment" onchange="pickPhoto(this.files[0])" hidden></label>');
+}
+function pickPhoto(file) {
+    if (!file || !pickQ) return;
+    const q = pickQ, fr = new FileReader();
+    fr.onload = () => { const im = new Image(); im.onload = () => {
+        const k = Math.min(1, 900 / Math.max(im.width, im.height)), c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
+        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+        const data = c.toDataURL('image/jpeg', .6), at = Date.now(), pv = $('pkPrev'); if (pv) pv.innerHTML = '<img src="' + data + '" alt="">';
+        Promise.all(q.ids.map(i => HWBiz.putDoc('pickpic', i, { data, at, by: me.id }).then(() => HWOrders.update(i, { pickPicAt: at }, 'pick_photo'))))
+            .then(() => { buzz(20); pickQ = null; closeSheet(); HWOrders.toast('✓ تم تأكيد الاستلام بالصورة'); q.then(); })
+            .catch(() => HWOrders.toast('تعذّر حفظ الصورة، حاول مجددًا'));
+    }; im.src = fr.result; };
+    fr.readAsDataURL(file);
+}
 function stepAction(k, id) {
     const o = HWOrders.get(id); if (!o) return; buzz(18);
+    if (k === 'pickAll' || k === 'pick') {
+        const ids = k === 'pickAll' ? [o].concat(siblings(o)).filter(x => !HWOrders.isMarket(x)).map(x => x.id) : [id];
+        if (needPickPic(ids)) { pickPhotoSheet(ids, () => stepAction(k, id)); return; }
+    }
     const s = HWOrders.settle(o);
     if (k === 'arrS') { HWOrders.update(id, { arrivedStore: true }, 'arrived_store'); siblings(o).filter(x => !x.arrivedStore).forEach(x => HWOrders.update(x.id, { arrivedStore: true }, 'arrived_store')); }
     else if (k === 'pickAll') { [o].concat(siblings(o)).filter(x => !HWOrders.isMarket(x)).forEach(x => confirmPick(x.id)); HWOrders.toast('✓ استلمت كل طلبات ' + (o.storeName || 'المطعم')); }
@@ -585,6 +615,7 @@ const CI = {
     list: SV('<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>', 18),
     info: SV('<circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/>', 18), warn: SV('<path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4M12 17h.01"/>', 18)
 };
+const CAM = SV('<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13.5" r="3.5"/>', 20);
 const LOCK = SV('<rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><path d="M12 14.5v2.5"/>', 22);
 const kmMin = km => Math.max(1, Math.round(km / ((CFG.capKmh || 25) / 60)));
 function capMode() { const on = isOnline(), a = active(); return a ? 'job' : !on ? 'off' : offers().length ? 'offer' : 'idle'; }   /* طلب مسند له يظهر دائمًا، حتى لو كان غير متصل */
@@ -634,10 +665,12 @@ function offerSheet(o) {
     const s = HWOrders.settle(o), mk = HWOrders.isMarket(o), sl = sLoc(o);
     const pk = myPos && sl ? HWMap.est(myPos, [sl.lat, sl.lng]) : (o.offerKm != null ? o.offerKm : null);
     const dk = o.distKm != null ? Number(o.distKm) : null, lim = (CFG.offerSeconds || 45) * 1000, t0 = o.offerTo === me.id ? o.offerAt : seen[o.id];
-    const left = Math.max(0, Math.ceil((lim - (Date.now() - (t0 || Date.now()))) / 1000));
+    const left = Math.max(0, Math.ceil((lim - (Date.now() - (t0 || Date.now()))) / 1000)), e = HWOrders.eta(o, myPos);
     return (!s.fee && !HWOrders.isMarket(o) ? '<div class="cm-earn tbd"><b>تحدد لاحقًا</b><p>أجرة هذا الطلب تحددها الإدارة وتظهر في أرباحك فور تسعيره</p></div>' : '<div class="cm-earn"><b dir="ltr">' + money(s.net) + '<small>د.أ</small></b><p>ربحك من هذا الطلب' + (s.surge ? ' (شامل ' + money(s.surge) + ' رسوم ذروة)' : '') + '</p></div>') +
-        '<div class="cm-rows"><div class="cm-row"><span class="ic">' + CI.store + '</span><div class="t"><small>الاستلام</small><b>' + H(o.storeName || o.from || '') + '</b></div><span class="km">' + (pk != null ? pk.toFixed(1) + ' كم · ' + kmMin(pk) + ' د' : '') + '</span></div>' +
-        '<div class="cm-row"><span class="ic c">' + CI.user + '</span><div class="t"><small>التسليم</small><b>' + H((o.address && (o.address.label || o.address.area)) || o.to || '') + '</b></div><span class="km">' + (dk != null ? dk.toFixed(1) + ' كم · ' + (o.routeMin || kmMin(dk)) + ' د' : '') + '</span></div></div>' +
+        '<div class="cm-rows"><div class="cm-row"><span class="ic">' + CI.store + '</span><div class="t"><small>الاستلام</small><b>' + H(o.storeName || o.from || '') + '</b></div><span class="km">' + (pk != null ? pk.toFixed(1) + ' كم · ' : '') + (e && e.toStore != null ? e.toStore + ' د' : '') + '</span></div>' +
+        '<div class="cm-row"><span class="ic c">' + CI.user + '</span><div class="t"><small>التسليم</small><b>' + H((o.address && (o.address.label || o.address.area)) || o.to || '') + '</b></div><span class="km">' + (dk != null ? dk.toFixed(1) + ' كم · ' : '') + (e ? e.toDest + ' د' : '') + '</span></div></div>' +
+        /* الإجمالي: من موقعه الآن حتى تسليم الطلب (شامل انتظار التحضير إن وُجد) */
+        (e ? '<div class="cm-total"><span>الوقت الإجمالي للطلب' + (e.wait ? ' <em>(منها ' + e.wait + ' د انتظار تحضير)</em>' : '') + '</span><b>' + e.total + '<small> د</small></b></div>' : '') +
         (mk ? '<div class="cm-cash"><span>تدفع للمطعم <b>' + money(s.items) + '</b></span><span>تحصّل من العميل <b>' + money(s.collected) + '</b></span></div>' : '') +
         '<button type="button" class="cm-acc" data-take="' + H(o.id) + '" data-t0="' + (t0 || Date.now()) + '"><i class="fill" style="width:' + (100 * left / (lim / 1000)) + '%"></i><span>قبول الطلب</span><em>' + left + ' ث</em></button>';
 }
@@ -649,7 +682,7 @@ function jobSheet(o) {
     const who = toStore ? (o.storeName || o.from || '') : ((o.customer && o.customer.name) || 'العميل');
     const sub = toStore ? (o.storeState === 'ready' ? 'الطلب جاهز للاستلام' : 'الطلب قيد التحضير') : H(((o.address && (o.address.label || o.address.area)) || o.to || '') + (o.address && o.address.details ? ' · ' + o.address.details : ''));
     return '<div class="cm-job"><span class="av">' + (toStore && o.storeId ? '<img src="' + H(HWBiz.logo(o.storeId)) + '" alt="">' : CI.user) + '</span><div class="t"><small>' + H(o.code) + '</small><b>توجّه إلى ' + H(who) + '</b><small>' + sub + '</small></div>' +
-        (km != null ? '<span class="eta">' + kmMin(km) + '<small> ' + (HWI18n.lang === 'en' ? 'min' : 'د') + '</small></span>' : '') + '</div>' +
+        (() => { const e = HWOrders.eta(o, myPos), m = e ? (toStore ? e.toStore : e.toDest) : km != null ? kmMin(km) : null; return m != null ? '<span class="eta">' + m + '<small> ' + (HWI18n.lang === 'en' ? 'min' : 'د') + '</small></span>' : ''; })() + '</div>' +
         (!toStore && o.address && o.address.note ? '<div class="drop-note"><span>' + CI.info + ' تعليمات العميل</span><b>' + H(o.address.note) + '</b></div>' : '') +
         /* طلب يدوي بوجهة غير محددة: الكابتن يختار المنطقة الفعلية، والإدارة تعتمد الأجرة بضغطة */
         (!mk && o.unpriced && !o.to ? (o.capDest ? '<div class="drop-note"><span>' + CI.info + ' اخترت منطقة التسليم</span><b>' + H(o.capDest.n) + ' · بانتظار اعتماد الإدارة</b></div>'
@@ -709,10 +742,11 @@ function renderEarn() {
     $('earnChips').innerHTML = [['open', 'الحالي'], ['today', 'اليوم'], ['week', '٧ أيام'], ['all', 'الكل']].map(r => '<button type="button" class="chip' + (earnRange === r[0] ? ' on' : '') + '" data-r="' + r[0] + '">' + r[1] + '</button>').join('');
     const list = earnList();
     const t = list.reduce((a, o) => { const s = HWOrders.settle(o); a.n++; a.col += s.collected; a.items += s.items; a.fee += s.fee; a.com += s.commission; a.net += s.net; return a; }, { n: 0, col: 0, items: 0, fee: 0, com: 0, net: 0 });
-    $('earnBody').innerHTML = '<div class="eg-grid"><div class="eg hi" data-stat="net"><small>صافي أرباحك</small><b>' + money2(t.net) + '</b></div>' +
-        '<div class="eg" data-stat="n"><small>طلبات مسلّمة</small><b>' + t.n + '</b></div><div class="eg" data-stat="fee"><small>رسوم التوصيل</small><b>' + money2(t.fee) + '</b></div>' +
-        '<div class="eg" data-stat="col"><small>حصّلت من العملاء</small><b>' + money2(t.col) + '</b></div><div class="eg" data-stat="items"><small>دفعت للمطاعم</small><b>' + money2(t.items) + '</b></div>' +
-        '<div class="eg warn" data-stat="com" style="grid-column:1/-1"><small>عمولة المنصة (' + Math.round((CFG.commissionRate || .1) * 100) + '٪ من التوصيل)</small><b>' + money2(t.com) + '</b></div></div>' +
+    const per = { open: 'منذ آخر تسوية', today: 'اليوم', week: 'آخر ٧ أيام', all: 'كل الفترات' }[earnRange];
+    /* رقم واحد بارز (صافي الربح)، وتحته التفاصيل كسطور في قائمة واحدة بدل بطاقات مكررة */
+    $('earnBody').innerHTML = '<div class="hw-hero" data-stat="net" role="button" tabindex="0"><small>صافي أرباحك · ' + per + '</small><b>' + money2(t.net) + '</b><span>' + countTxt(t.n) + ' مسلّمة</span></div>' +
+        '<div class="hw-list">' + [['n', 'طلبات مسلّمة', t.n], ['fee', 'رسوم التوصيل', money2(t.fee)], ['col', 'حصّلت من العملاء', money2(t.col)], ['items', 'دفعت للمطاعم', money2(t.items)], ['com', 'عمولة المنصة (' + Math.round((CFG.commissionRate || .1) * 100) + '٪)', '− ' + money2(t.com)]]
+            .map(r => '<button type="button" class="hw-row" data-stat="' + r[0] + '"><span>' + r[1] + '</span><b>' + r[2] + '</b></button>').join('') + '</div>' +
         settleCard() +
         '<h3 class="sec-t">الطلبات</h3><div class="cart-card">' + (list.length ? list.slice().sort((a, b) => b.updatedAt - a.updatedAt).map(o => '<div class="er"><div><b>' + H(o.storeName || o.from || '') + '</b><small>' + H(o.code) + ' · ' + HWOrders.ago(o.updatedAt || o.createdAt) + '</small></div><b>+' + money(earnOf(o)) + '</b></div>').join('') : '<p class="mut">لا توجد طلبات في هذه الفترة</p>') + '</div>';
 }
