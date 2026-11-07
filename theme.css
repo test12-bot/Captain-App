@@ -4,7 +4,7 @@
    لمسات صفراء للتمييز، ونص داكن مريح للعين. بلا تدرجات ولا ظلال ثقيلة.
    ========================================================= */
 :root{
-  --teal:#25CED1; --teal-600:#25CED1; --yellow:#E8EF44; --yellow-700:#E8EF44; --cream:#F3F0E7; --white:#FFFFFF;
+  --teal:#26CED0; --teal-600:#26CED0; --yellow:#E8EF44; --yellow-700:#E8EF44; --cream:#F3F0E7; --white:#FFFFFF;
   --ink:#0E3A3B; --teal-800:#0E3A3B; --teal-900:#0E3A3B; --ink-soft:rgba(14,58,59,.62);
   --cream-line:#E7E2D3;                       /* فاصل خفيف بدرجة من الكريمي نفسه */
   --glass-bg:var(--cream); --glass-bg-strong:var(--cream); --glass-border:transparent; --card:var(--cream);
@@ -87,7 +87,7 @@ body{background:var(--white);color:var(--ink)}
 body.bar-mini .tabbar{transform:scale(.86) translateY(2px)}
 .tab{flex:1 1 0 !important;flex-direction:row !important;gap:7px !important;height:50px;padding:0 !important;justify-content:center;align-items:center;border-radius:999px;color:var(--ink) !important;
   transition:flex-grow .32s cubic-bezier(.22,1,.36,1),background .25s var(--ease-out),transform .12s}
-.tab.on{flex-grow:2.1 !important;background:rgba(37,206,209,.36)}
+.tab.on{flex-grow:2.1 !important;background:rgba(38,206,208,.36)}
 .tab .ti{width:auto !important;height:auto !important;background:none !important;transform:none !important}
 .tab svg{width:25px;height:25px;stroke-width:2}
 .tab>span:last-child{font-size:13px;font-weight:800;white-space:nowrap;animation:tabLbl .3s ease}
@@ -106,7 +106,7 @@ body.bar-mini .tabbar{transform:scale(.86) translateY(2px)}
 .s-delivered .oc-chip{background:var(--ink) !important;color:var(--cream) !important}
 .s-cancelled .oc-chip{background:var(--white) !important;color:var(--ink-soft) !important}
 .oc-price{background:var(--yellow) !important;color:var(--ink) !important}
-.oc-prog i{background:var(--white) !important}.oc-prog i.done{background:var(--ink) !important}.oc-prog i.act{background:rgba(37,206,209,.35) !important}
+.oc-prog i{background:var(--white) !important}.oc-prog i.done{background:var(--ink) !important}.oc-prog i.act{background:rgba(38,206,208,.35) !important}
 .oc-prog i.act::after{background:var(--teal) !important}
 .oc-cap{background:var(--white) !important}
 .oc-cap .av{background:var(--ink) !important;color:var(--yellow) !important}
@@ -163,7 +163,7 @@ html[dir="ltr"] body{font-family:"Tajawal","Segoe UI",system-ui,sans-serif}
 /* ===== محرر المنيو المشترك (hw-menued.js) ===== */
 /* زر تفعيل الصوت: أسفل الشاشة فوق شريط التنقل، لا يغطي العناوين */
 /* التذييل لا يختفي تحت شريط التنقل، ووسوم البطاقات بخط التطبيق */
-.oc .oc-meta .oc-tag,.oc .oc-top .oc-store{background:rgba(37,206,209,.16) !important;color:#0E3A3B !important;border-radius:99px;padding:3px 10px;font-size:11.5px;font-weight:800;font-family:inherit}
+.oc .oc-meta .oc-tag,.oc .oc-top .oc-store{background:rgba(38,206,208,.16) !important;color:#0E3A3B !important;border-radius:99px;padding:3px 10px;font-size:11.5px;font-weight:800;font-family:inherit}
 .act-btns a,.act-btns button{display:inline-flex;align-items:center;justify-content:center;gap:6px}.act-btns svg{flex:none}.drop-note span svg{width:15px;height:15px;vertical-align:-3px}
 
 /* =========================================================
@@ -195,14 +195,14 @@ body.cap-off .cap-map .lmap{filter:grayscale(.75) brightness(1.04) opacity(.75)}
 .cm-grab{width:44px;height:5px;border-radius:9px;background:#ddd6c9;margin:0 auto 12px}
 .cm-wait{display:flex;align-items:center;gap:14px;margin:2px 0 14px}
 .cm-wait b{display:block;font-size:18px;font-weight:900;color:#0E3A3B}.cm-wait small{display:block;font-size:12.5px;font-weight:700;color:rgba(14,58,59,.62)}
-.cm-pulse{flex:none;width:52px;height:52px;border-radius:50%;background:rgba(37,206,209,.16);color:#0E3A3B;display:grid;place-items:center;box-shadow:0 0 0 0 rgba(37,206,209,.35);animation:cmPulse 2s ease-out infinite}
+.cm-pulse{flex:none;width:52px;height:52px;border-radius:50%;background:rgba(38,206,208,.16);color:#0E3A3B;display:grid;place-items:center;box-shadow:0 0 0 0 rgba(38,206,208,.35);animation:cmPulse 2s ease-out infinite}
 .cm-pulse.off{background:rgba(14,58,59,.08);animation:none;opacity:.6}
-@keyframes cmPulse{70%{box-shadow:0 0 0 14px rgba(37,206,209,0)}100%{box-shadow:0 0 0 0 rgba(37,206,209,0)}}
+@keyframes cmPulse{70%{box-shadow:0 0 0 14px rgba(38,206,208,0)}100%{box-shadow:0 0 0 0 rgba(38,206,208,0)}}
 .cm-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}.cm-stats.two{grid-template-columns:1fr 1fr}
 .cm-stats div{background:#F3F0E7;border-radius:16px;padding:10px 12px;color:#0E3A3B}.cm-stats small{display:block;font-size:11.5px;font-weight:700;opacity:.62}.cm-stats b{font-size:19px;font-weight:900;white-space:nowrap}
-.cm-stats .hi{background:#25CED1}
+.cm-stats .hi{background:#26CED0}
 .cm-main{display:block;width:100%;height:58px;border:0;border-radius:20px;background:#0E3A3B;color:#E8EF44;font:inherit;font-weight:900;font-size:17px;cursor:pointer;margin-top:8px}
-.cm-due{display:flex;align-items:center;gap:10px;width:100%;border:0;border-radius:14px;background:rgba(37,206,209,.14);color:#0E3A3B;font:inherit;font-size:13px;font-weight:700;padding:10px 12px;margin-bottom:10px;text-align:start;cursor:pointer}
+.cm-due{display:flex;align-items:center;gap:10px;width:100%;border:0;border-radius:14px;background:rgba(38,206,208,.14);color:#0E3A3B;font:inherit;font-size:13px;font-weight:700;padding:10px 12px;margin-bottom:10px;text-align:start;cursor:pointer}
 .cm-due span{flex:1}.cm-due b{font-weight:800;text-decoration:underline;text-underline-offset:3px}
 .cm-due.over{background:rgba(229,72,77,.1);color:#B4232A}
 /* العرض */
@@ -213,7 +213,7 @@ body.cap-off .cap-map .lmap{filter:grayscale(.75) brightness(1.04) opacity(.75)}
 .cm-rows{margin:12px 0 0;position:relative}
 .cm-rows::before{content:"";position:absolute;inset-inline-start:18px;top:46px;height:22px;border-inline-start:2.5px dashed rgba(14,58,59,.25)}
 .cm-row{display:flex;align-items:center;gap:12px;padding:7px 0;color:#0E3A3B}
-.cm-row .ic{flex:none;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:rgba(37,206,209,.16)}
+.cm-row .ic{flex:none;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:rgba(38,206,208,.16)}
 .cm-row .ic.c{background:#0E3A3B;color:#E8EF44}
 .cm-row .t{flex:1;min-width:0}.cm-row .t small{display:block;font-size:11.5px;font-weight:700;opacity:.6}.cm-row .t b{display:block;font-size:15.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cm-row .km{flex:none;font-size:13px;font-weight:800;white-space:nowrap}
@@ -233,10 +233,10 @@ body.cap-off .cap-map .lmap{filter:grayscale(.75) brightness(1.04) opacity(.75)}
 .cm-btns a,.cm-btns button{display:flex;align-items:center;justify-content:center;gap:6px;height:46px;border:0;border-radius:14px;background:#F3F0E7;color:#0E3A3B;font:inherit;font-weight:800;font-size:13.5px;text-decoration:none;cursor:pointer}
 /* الملاحة وعدم الاستلام */
 .ns-steps{margin:0 0 12px;padding-inline-start:20px;display:grid;gap:6px;font-weight:700;font-size:14px}.ns-steps a{font-weight:800;color:#0E3A3B;text-decoration:underline}
-.ns-photo span{display:block;background:rgba(37,206,209,.14);border-radius:12px;padding:8px 12px;font-weight:800;font-size:13px;margin-bottom:8px}
+.ns-photo span{display:block;background:rgba(38,206,208,.14);border-radius:12px;padding:8px 12px;font-weight:800;font-size:13px;margin-bottom:8px}
 .submit-btn.dng{background:#E5484D !important;color:#fff !important}.submit-btn:disabled{opacity:.45;pointer-events:none}
 /* موقعي وقت الانتظار: دوائر تتسع ببطء */
-body.cap-idle .mk-me::before,body.cap-idle .mk-me::after{content:"";position:absolute;left:50%;top:50%;width:28px;height:28px;margin:-14px 0 0 -14px;border-radius:50%;border:2px solid rgba(37,206,209,.55);animation:cmRadar 3s ease-out infinite}
+body.cap-idle .mk-me::before,body.cap-idle .mk-me::after{content:"";position:absolute;left:50%;top:50%;width:28px;height:28px;margin:-14px 0 0 -14px;border-radius:50%;border:2px solid rgba(38,206,208,.55);animation:cmRadar 3s ease-out infinite}
 body.cap-idle .mk-me::after{animation-delay:1.5s}
 @keyframes cmRadar{to{transform:scale(9);opacity:0}}
 @media (prefers-reduced-motion:reduce){.cm-new .bell,.cm-pulse,body.cap-idle .mk-me::before,body.cap-idle .mk-me::after{animation:none}}
@@ -245,7 +245,7 @@ body.cap-idle .mk-me::after{animation-delay:1.5s}
 :root[data-theme="dark"] body .cm-acc .fill{background:#C9D02A}
 :root[data-theme="dark"] body .cm-acc *{color:#0E3A3B}
 :root[data-theme="dark"] body .cm-stats div,:root[data-theme="dark"] body .cm-cash,:root[data-theme="dark"] body .cm-btns a,:root[data-theme="dark"] body .cm-btns button{background:#1F4344;color:#EAF5F4}
-:root[data-theme="dark"] body .cm-stats .hi{background:#25CED1;color:#0E3A3B}
+:root[data-theme="dark"] body .cm-stats .hi{background:#26CED0;color:#0E3A3B}
 :root[data-theme="dark"] body .cm-stats .hi *{color:#0E3A3B}
 :root[data-theme="dark"] body .cm-due{color:#EAF5F4}
 :root[data-theme="dark"] body .cm-due.over{background:rgba(229,72,77,.2);color:#FFB3B5}

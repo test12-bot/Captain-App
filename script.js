@@ -569,7 +569,7 @@ function ensureMap() {
 }
 function updateMeMarker(pos, acc) {
     if (!homeMap) return;
-    if (!meMk) { meMk = L.marker(pos, { icon: HWMap.ICON.me(), interactive: false, zIndexOffset: 800 }).addTo(homeMap); accMk = L.circle(pos, { radius: acc || 0, color: '#25CED1', weight: 1, opacity: .5, fillColor: '#25CED1', fillOpacity: .12, interactive: false }).addTo(homeMap); }
+    if (!meMk) { meMk = L.marker(pos, { icon: HWMap.ICON.me(), interactive: false, zIndexOffset: 800 }).addTo(homeMap); accMk = L.circle(pos, { radius: acc || 0, color: '#26CED0', weight: 1, opacity: .5, fillColor: '#26CED0', fillOpacity: .12, interactive: false }).addTo(homeMap); }
     else { meMk.setLatLng(pos); accMk.setLatLng(pos); accMk.setRadius(acc || 0); }
     if (followMe && (!mapSig || mapSig[0] === 'i' || mapSig[0] === 'x')) centerMe(Math.max(homeMap.getZoom(), 15));
 }
