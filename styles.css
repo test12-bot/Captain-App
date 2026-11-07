@@ -648,3 +648,9 @@ body:not(.authed) .tabbar,body:not(.authed) .live-bar{display:none;}
 .drop-note{grid-column:1/-1;background:#E8EF44 !important;color:#0E3A3B !important;border-radius:14px;padding:10px 12px !important}
 .drop-note span{display:block;font-size:12px;font-weight:800;opacity:.75}.drop-note b{font-size:14.5px}
 .btn-row{display:flex;gap:10px;margin-top:16px}.btn-row>*{flex:1}
+
+/* أزرار عرضها كامل في النوافذ، وقائمة خيارات الدعم (نفس شكل التطبيق) */
+.ghost-btn.wide{display:block;width:100%;text-align:center}
+.sup-list{display:flex;flex-direction:column;gap:8px;margin:0 0 14px}
+.sup-list a,.sup-list button{display:block;width:100%;padding:12px 14px;border:0;border-radius:16px 16px 16px 6px;background:var(--cream);color:var(--ink);font:inherit;font-size:14px;font-weight:700;text-align:start;text-decoration:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.sup-list a:active,.sup-list button:active{transform:scale(.98)}
