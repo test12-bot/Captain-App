@@ -181,7 +181,7 @@ body.cap-off .cap-map .lmap{filter:grayscale(.75) brightness(1.04) opacity(.75)}
 .cm-on{display:inline-flex;align-items:center;gap:10px;border:0;border-radius:99px;background:#fff;color:#0E3A3B;font:inherit;font-weight:800;font-size:14.5px;padding:7px 16px 7px 8px;box-shadow:0 8px 20px rgba(14,58,59,.22);cursor:pointer}
 .cm-on .tg{width:46px;height:28px;border-radius:99px;background:rgba(14,58,59,.18);position:relative;transition:background .2s}
 .cm-on .tg::after{content:"";position:absolute;top:3px;inset-inline-end:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.2);transition:inset-inline-end .2s}
-.cm-on.on{background:#0E3A3B;color:#F5EDE3}.cm-on.on .tg{background:#E8EF44}.cm-on.on .tg::after{inset-inline-end:21px;background:#0E3A3B}
+.cm-on.on{background:#0E3A3B;color:#F3F0E7}.cm-on.on .tg{background:#E8EF44}.cm-on.on .tg::after{inset-inline-end:21px;background:#0E3A3B}
 .cm-me{position:fixed;z-index:25;inset-inline-start:14px;width:44px;height:44px;border-radius:50%;border:0;background:#fff;color:#0E3A3B;display:grid;place-items:center;box-shadow:0 8px 20px rgba(14,58,59,.18);cursor:pointer;bottom:calc(var(--cm-h,330px) + 14px)}
 .cm-me svg{width:22px;height:22px}
 .cm-new{display:inline-flex;align-items:center;gap:8px;background:#0E3A3B;color:#E8EF44;font-weight:800;font-size:15px;border-radius:99px;padding:10px 16px;box-shadow:0 8px 20px rgba(14,58,59,.3)}
@@ -219,9 +219,11 @@ body.cap-off .cap-map .lmap{filter:grayscale(.75) brightness(1.04) opacity(.75)}
 .cm-row .km{flex:none;font-size:13px;font-weight:800;white-space:nowrap}
 .cm-cash{display:flex;justify-content:space-between;gap:8px;background:#F3F0E7;border-radius:14px;padding:10px 14px;margin:10px 0;font-size:13px;font-weight:700;color:#0E3A3B}
 .cm-cash b{font-weight:900}
+.cm-total+.cm-acc{margin-top:10px}
+.cm-road{padding:0 4px 4px}.cm-road .oc-prog.hw-road{margin-top:34px}
 .cm-acc{position:relative;display:flex;width:100%;height:60px;border:0;border-radius:20px;background:#0E3A3B;overflow:hidden;align-items:center;justify-content:center;gap:12px;color:#E8EF44;font:inherit;font-weight:900;font-size:18px;cursor:pointer}
 .cm-acc .fill{position:absolute;inset-block:0;inset-inline-start:0;background:#1E5354;transition:width 1s linear}
-.cm-acc span,.cm-acc em{position:relative}.cm-acc em{font-style:normal;font-size:14px;color:#F5EDE3;opacity:.85}
+.cm-acc span,.cm-acc em{position:relative}.cm-acc em{font-style:normal;font-size:14px;color:#F3F0E7;opacity:.85}
 .cm-acc:active{transform:scale(.98)}
 /* المهمة الجارية */
 .cm-job{display:flex;align-items:center;gap:12px;margin:2px 0 8px;color:#0E3A3B}

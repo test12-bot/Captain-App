@@ -56,7 +56,7 @@ function initIntroVideo() {
         'void main(){ uv = vec2(p.x*0.5+0.5, 0.5-p.y*0.5); gl_Position = vec4(p,0.0,1.0); }');
     const fs = compile(gl.FRAGMENT_SHADER,
         'precision mediump float; uniform sampler2D tex; varying vec2 uv;' +
-        'const vec3 BG = vec3(33.0,204.0,208.0)/255.0;' +            // لون خلفية الفيديو
+        'const vec3 BG = vec3(37.0,205.0,208.0)/255.0;' +            // لون خلفية الفيديو
         'void main(){' +
         '  vec3 c = texture2D(tex, uv).rgb;' +
         '  float a = clamp((distance(c, BG) - 0.035) / 0.80, 0.0, 1.0);' +
@@ -577,11 +577,11 @@ function recenter() { if (!homeMap) return; followMe = true; mapSig = ''; render
 function renderMapLayers(force) {
     ensureMap(); if (!homeMap) return;
     const a = active(), of = a ? [] : offers(), o = of[offerIdx] || of[0], idle = !a && !o && isOnline();
-    const sig = (a ? 'a' + actives().map(x => x.id + x.status).join(',') + '>' + a.id + (sLoc(a) ? 'L' : '') : o ? 'o' + o.id + (sLoc(o) ? 'L' : '') : idle ? 'i' : 'x') + (heatOn ? '|h' : '');
+    const sig = (a ? 'a' + actives().map(x => x.id + x.status).join(',') + '>' + a.id + (sLoc(a) ? 'L' : '') + (HWOrders.destLL(a) ? 'D' : '') : o ? 'o' + o.id + (sLoc(o) ? 'L' : '') + (HWOrders.destLL(o) ? 'D' : '') : idle ? 'i' : 'x') + (heatOn ? '|h' : '');
     if (!force && sig === mapSig) return; mapSig = sig; ordLayer.clearLayers();
     const pts = myPos ? [myPos] : [], job = a || o, jsl = job && sLoc(job);
     if (job) {
-        const sl = jsl ? [jsl.lat, jsl.lng] : null, dl = job.address && job.address.lat != null ? [job.address.lat, job.address.lng] : null;
+        const sl = jsl ? [jsl.lat, jsl.lng] : null, dl = HWOrders.destLL(job);
         /* من موقعي إلى المطعم: خط منقط (قبل الاستلام) */
         if (myPos && sl && (!a || a.status === 'accepted')) L.polyline([myPos, sl], { color: '#0E3A3B', weight: 4, opacity: .8, dashArray: '2 10', lineCap: 'round', interactive: false }).addTo(ordLayer);
         if (sl && dl) ordLayer.addLayer(HWMap.line(homeMap, job.route || [sl, dl]));
@@ -589,7 +589,7 @@ function renderMapLayers(force) {
         if (dl) { L.marker(dl, { icon: HWMap.ICON.home(), interactive: false }).addTo(ordLayer); pts.push(dl); }
         /* باقي الطلبات التي معه: مطاعمها وعملاؤها بشفافية، والضغط عليها يحوّل إليها */
         if (a) actives().filter(x => x.id !== a.id).forEach(x => {
-            const xs = sLoc(x), xd = x.address && x.address.lat != null ? [x.address.lat, x.address.lng] : null;
+            const xs = sLoc(x), xd = HWOrders.destLL(x);
             if (xs && x.status === 'accepted') { L.marker([xs.lat, xs.lng], { icon: HWMap.ICON.store(x.storeId || ''), opacity: .55 }).on('click', () => { focusJob = x.id; mapSig = ''; render(); }).addTo(ordLayer); pts.push([xs.lat, xs.lng]); }
             if (xd) { L.marker(xd, { icon: HWMap.ICON.home(), opacity: .55 }).on('click', () => { focusJob = x.id; mapSig = ''; render(); }).addTo(ordLayer); pts.push(xd); }
         });
@@ -672,30 +672,47 @@ function idleSheet() {
 function offerSheet(o) {
     const s = HWOrders.settle(o), mk = HWOrders.isMarket(o), sl = sLoc(o);
     const pk = myPos && sl ? HWMap.est(myPos, [sl.lat, sl.lng]) : (o.offerKm != null ? o.offerKm : null);
-    const dk = o.distKm != null ? Number(o.distKm) : null, lim = (CFG.offerSeconds || 45) * 1000, t0 = o.offerTo === me.id ? o.offerAt : seen[o.id];
+    const dk = o.distKm != null ? Number(o.distKm) : o.distance ? Number(o.distance) || null : null, lim = (CFG.offerSeconds || 45) * 1000, t0 = o.offerTo === me.id ? o.offerAt : seen[o.id];
     const left = Math.max(0, Math.ceil((lim - (Date.now() - (t0 || Date.now()))) / 1000)), e = HWOrders.eta(o, myPos);
     return (!s.fee && !HWOrders.isMarket(o) ? '<div class="cm-earn tbd"><b>تحدد لاحقًا</b><p>أجرة هذا الطلب تحددها الإدارة وتظهر في أرباحك فور تسعيره</p></div>' : '<div class="cm-earn"><b dir="ltr">' + money(s.net) + '<small>د.أ</small></b><p>ربحك من هذا الطلب' + (s.surge ? ' (شامل ' + money(s.surge) + ' رسوم ذروة)' : '') + '</p></div>') +
         '<div class="cm-rows"><div class="cm-row"><span class="ic">' + CI.store + '</span><div class="t"><small>الاستلام</small><b>' + H(o.storeName || o.from || '') + '</b></div><span class="km">' + (pk != null ? pk.toFixed(1) + ' كم · ' : '') + (e && e.toStore != null ? e.toStore + ' د' : '') + '</span></div>' +
         '<div class="cm-row"><span class="ic c">' + CI.user + '</span><div class="t"><small>التسليم</small><b>' + H((o.address && (o.address.label || o.address.area)) || o.to || '') + '</b></div><span class="km">' + (dk != null ? dk.toFixed(1) + ' كم · ' : '') + (e ? e.toDest + ' د' : '') + '</span></div></div>' +
         /* الإجمالي: من موقعه الآن حتى تسليم الطلب (شامل انتظار التحضير إن وُجد) */
         (e ? '<div class="cm-total"><span>الوقت الإجمالي للطلب' + (e.wait ? ' <em>(منها ' + e.wait + ' د انتظار تحضير)</em>' : '') + '</span><b>' + e.total + '<small> د</small></b></div>' : '') +
-        (mk ? '<div class="cm-cash"><span>تدفع للمطعم <b>' + money(s.items) + '</b></span><span>تحصّل من العميل <b>' + money(s.collected) + '</b></span></div>' : '') +
+        cashRow(o, true) +
         '<button type="button" class="cm-acc" data-take="' + H(o.id) + '" data-t0="' + (t0 || Date.now()) + '"><i class="fill" style="width:' + (100 * left / (lim / 1000)) + '%"></i><span>قبول الطلب</span><em>' + left + ' ث</em></button>';
+}
+/* سطر النقد بنفس الصيغة لكل الطلبات: طلب العميل (تدفع للمطعم · تحصّل من العميل)،
+   وطلب المطعم/الإدارة (قيمة الطلب · تحصّل من العميل = القيمة + أجرة التوصيل) */
+function cashRow(o, withStore) {
+    const s = HWOrders.settle(o);
+    if (HWOrders.isMarket(o)) return '<div class="cm-cash">' + (withStore ? '<span>تدفع للمطعم <b>' + money(s.items) + '</b></span>' : '') + '<span>تحصّل من العميل <b>' + money(s.collected) + '</b></span></div>';
+    const v = String(o.orderValue == null ? '' : o.orderValue).trim(); if (!v) return '';
+    const num = /^[\d٠-٩.,٫\s]+$/.test(v) ? HWOrders.valNum(v) : null;
+    if (num == null) return '<div class="cm-cash"><span>قيمة الطلب <b>' + H(v) + '</b></span></div>';
+    return '<div class="cm-cash">' + (withStore ? '<span>قيمة الطلب <b>' + money(num) + '</b></span>' : '') + '<span>تحصّل من العميل <b>' + money(num + s.fee + (s.surge || 0)) + '</b></span></div>';
+}
+/* تفاصيل طلب المطعم/الإدارة: قيمة الطلب وما يحصّله الكابتن (نفس ترتيب طلب العميل) */
+function valRows(o, s) {
+    const v = String(o.orderValue == null ? '' : o.orderValue).trim(); if (!v) return '';
+    const num = /^[\d٠-٩.,٫\s]+$/.test(v) ? HWOrders.valNum(v) : null;
+    return '<div><span>قيمة الطلب</span><b>' + (num == null ? H(v) : money2(num)) + '</b></div>' + (num == null ? '' : '<div><span>تحصّل من العميل</span><b>' + money2(num + s.fee + (s.surge || 0)) + '</b></div>');
 }
 function jobSheet(o) {
     const s = HWOrders.settle(o), st = nextStep(o), mk = HWOrders.isMarket(o), toStore = o.status === 'accepted';
     const sd = toStore && o.storeId ? HWBiz.storeById(o.storeId) : null;
     const phone = toStore ? o.storePhone || (sd && sd.phone) || '' : (o.customer && o.customer.phone) || o.phone || '';
-    const tg = toStore ? sLoc(o) : (o.address && o.address.lat != null ? o.address : null), km = myPos && tg ? HWMap.est(myPos, [tg.lat, tg.lng]) : null;
+    const tg = toStore ? sLoc(o) : (HWOrders.destLL(o) ? { lat: HWOrders.destLL(o)[0], lng: HWOrders.destLL(o)[1] } : null), km = myPos && tg ? HWMap.est(myPos, [tg.lat, tg.lng]) : null;
     const who = toStore ? (o.storeName || o.from || '') : ((o.customer && o.customer.name) || 'العميل');
     const sub = toStore ? (o.storeState === 'ready' ? 'الطلب جاهز للاستلام' : 'الطلب قيد التحضير') : H(((o.address && (o.address.label || o.address.area)) || o.to || '') + (o.address && o.address.details ? ' · ' + o.address.details : ''));
     return '<div class="cm-job"><span class="av">' + (toStore && o.storeId ? '<img src="' + H(HWBiz.logo(o.storeId)) + '" alt="">' : CI.user) + '</span><div class="t"><small>' + H(o.code) + '</small><b>توجّه إلى ' + H(who) + '</b><small>' + sub + '</small></div>' +
         (() => { const e = HWOrders.eta(o, myPos), m = e ? (toStore ? e.toStore : e.toDest) : km != null ? kmMin(km) : null; return m != null ? '<span class="eta">' + m + '<small> ' + (HWI18n.lang === 'en' ? 'min' : 'د') + '</small></span>' : ''; })() + '</div>' +
+        '<div class="cm-road">' + HWOrders.progress_(o) + '</div>' +
         (!toStore && o.address && o.address.note ? '<div class="drop-note"><span>' + CI.info + ' تعليمات العميل</span><b>' + H(o.address.note) + '</b></div>' : '') +
         /* طلب يدوي بوجهة غير محددة: الكابتن يختار المنطقة الفعلية، والإدارة تعتمد الأجرة بضغطة */
         (!mk && o.unpriced && !o.to ? (o.capDest ? '<div class="drop-note"><span>' + CI.info + ' اخترت منطقة التسليم</span><b>' + H(o.capDest.n) + ' · بانتظار اعتماد الإدارة</b></div>'
             : '<button type="button" class="ghost-btn wide cap-dest" onclick="pickCapDest(\'' + o.id + '\')">' + CI.info + ' حدد منطقة التسليم من القائمة</button>') : '') +
-        (mk ? '<div class="cm-cash">' + (toStore ? '<span>تدفع للمطعم <b>' + money(s.items) + '</b></span>' : '') + '<span>تحصّل من العميل <b>' + money(s.collected) + '</b></span></div>' : '') +
+        cashRow(o, toStore) +
         '<div class="cm-btns"><a href="' + H(navUrl(o)) + '" target="_blank" rel="noopener">' + CI.nav + 'افتح الخريطة</a>' + (phone ? '<a href="tel:' + H(phone) + '">' + CI.phone + (toStore ? 'اتصل بالمطعم' : 'اتصل بالعميل') + '</a>' : '') +
         '<button type="button" onclick="openJob(\'' + o.id + '\')">' + CI.list + 'التفاصيل</button></div>' +
         (st ? '<button type="button" class="cm-main" data-step="' + st.k + '" data-id="' + o.id + '">' + st.t + '</button>' : '') +
@@ -733,7 +750,7 @@ function renderJob() {
     $('jobBody').innerHTML = '<div class="page-heading"><h1>' + H(o.code) + '</h1><p>' + H(o.storeName || o.from || '') + ' · ' + HWOrders.label(o) + '</p></div>' +
         (o.status === 'accepted' || o.status === 'picked' ? activeCard(o) : '') +
         (mk ? '<h3 class="sec-t">المنتجات</h3><div class="cart-card">' + o.items.map(l => '<div class="cl ro"><div class="cl-txt"><b>' + l.qty + '× ' + H(l.name) + '</b>' + (l.opts && l.opts.length ? '<small>' + H(HWBiz.optsText(l.opts)) + '</small>' : '') + (l.notes ? '<small>' + H(l.notes) + '</small>' : '') + '</div></div>').join('') + (o.notes ? '<p class="mut">ملاحظة: ' + H(o.notes) + '</p>' : '') + '</div>' : '') +
-        '<h3 class="sec-t">الحساب</h3><div class="cart-card sum">' + (mk ? '<div><span>تدفع للمتجر</span><b>' + money2(s.items) + '</b></div><div><span>تحصّل من العميل</span><b>' + money2(s.collected) + '</b></div>' : '') + '<div><span>رسوم التوصيل</span><b>' + money2(s.fee) + '</b></div><div><span>عمولة المنصة (' + Math.round((CFG.commissionRate || .1) * 100) + '٪)</span><b>−' + money2(s.commission) + '</b></div><div class="tot"><span>صافي أرباحك</span><b>' + money2(s.net) + '</b></div></div>' +
+        '<h3 class="sec-t">الحساب</h3><div class="cart-card sum">' + (mk ? '<div><span>تدفع للمتجر</span><b>' + money2(s.items) + '</b></div><div><span>تحصّل من العميل</span><b>' + money2(s.collected) + '</b></div>' : valRows(o, s)) + '<div><span>رسوم التوصيل</span><b>' + money2(s.fee) + '</b></div><div><span>عمولة المنصة (' + Math.round((CFG.commissionRate || .1) * 100) + '٪)</span><b>−' + money2(s.commission) + '</b></div><div class="tot"><span>صافي أرباحك</span><b>' + money2(s.net) + '</b></div></div>' +
         '<h3 class="sec-t">السجل</h3><div class="cart-card">' + HWOrders.timeline(o) + '</div>';
 }
 
@@ -804,7 +821,7 @@ function readyOne(a) {
 function arriveCheck() { if (myPos) actives().some(arriveOne); }
 function arriveOne(a) {
     if (!a || !myPos) return false;
-    const toStore = a.status === 'accepted', tgt = toStore ? sLoc(a) : (a.address && a.address.lat != null ? a.address : null);
+    const toStore = a.status === 'accepted', tgt = toStore ? sLoc(a) : (HWOrders.destLL(a) ? { lat: HWOrders.destLL(a)[0], lng: HWOrders.destLL(a)[1] } : null);
     if (!tgt || (toStore ? a.arrivedStore : a.arrivedCustomer)) return;
     const key = a.id + (toStore ? 's' : 'c'); if (askSeen[key]) return;
     if (HWMap.est(myPos, [tgt.lat, tgt.lng]) > .2) return;
