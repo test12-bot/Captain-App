@@ -116,7 +116,8 @@ body.bar-mini .tabbar{transform:scale(.86) translateY(2px)}
 .tl li.done i{background:var(--teal) !important;border-color:var(--teal) !important}
 .tl li.act i{background:var(--yellow) !important;border-color:var(--ink) !important}
 .stat b,.stat small{color:var(--ink)}
-.pay-big .big{background:var(--yellow) !important;color:var(--ink) !important}
+.pay-big .big{background:var(--yellow) !important;color:var(--ink) !important;display:inline-block;padding:0 14px;border-radius:12px}
+#sheet .more-link{display:block;margin-left:auto;margin-right:auto;padding:6px 12px}
 .act-card{background:var(--ink) !important;color:var(--cream) !important}
 .act-card .submit-btn{background:var(--yellow) !important;color:var(--ink) !important}
 .act-btns a,.act-btns button{background:transparent !important;border:1.5px solid rgba(243,240,231,.35) !important;color:var(--cream) !important}
@@ -236,7 +237,7 @@ body.cap-off .cap-map .lmap{filter:grayscale(.75) brightness(1.04) opacity(.75)}
 /* الملاحة وعدم الاستلام */
 .ns-steps{margin:0 0 12px;padding-inline-start:20px;display:grid;gap:6px;font-weight:700;font-size:14px}.ns-steps a{font-weight:800;color:#0E3A3B;text-decoration:underline}
 .ns-photo span{display:block;background:rgba(38,206,208,.14);border-radius:12px;padding:8px 12px;font-weight:800;font-size:13px;margin-bottom:8px}
-.submit-btn.dng{background:#E5484D !important;color:#fff !important}.submit-btn:disabled{opacity:.45;pointer-events:none}
+.submit-btn.dng{background:#E5484D !important;color:#fff !important}.submit-btn.dng .btn-label{color:#fff !important}.submit-btn:disabled{opacity:.45;pointer-events:none}
 /* موقعي وقت الانتظار: دوائر تتسع ببطء */
 body.cap-idle .mk-me::before,body.cap-idle .mk-me::after{content:"";position:absolute;left:50%;top:50%;width:28px;height:28px;margin:-14px 0 0 -14px;border-radius:50%;border:2px solid rgba(38,206,208,.55);animation:cmRadar 3s ease-out infinite}
 body.cap-idle .mk-me::after{animation-delay:1.5s}

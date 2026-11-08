@@ -479,7 +479,7 @@ function noAnswer(id) {
     sheet('<div class="sh-head"><div><small>' + H(o.code) + '</small><h3>العميل لا يرد</h3></div></div>' +
         '<ol class="ns-steps"><li>اتصل بالعميل أكثر من مرة' + (o.customer && o.customer.phone ? ' <a href="tel:' + H(o.customer.phone) + '">اتصال</a>' : '') + '</li><li>صوّر الطلب عند الباب كإثبات وصولك</li><li>انتظر 5 دقائق من وصولك، ثم سجّل عدم الاستلام</li></ol>' +
         '<div class="ns-photo" id="nsPhoto">' + (o.podAt ? '<span>✓ تم حفظ صورة الإثبات</span>' : '') + '</div>' +
-        '<label class="ghost-btn wide file-btn">' + (o.podAt ? 'إعادة التصوير' : 'صوّر الطلب عند الباب') + '<input type="file" accept="image/*" capture="environment" onchange="podPhoto(\'' + id + '\',this.files[0])"></label>' +
+        '<label class="ghost-btn wide file-btn">' + (o.podAt ? 'إعادة التصوير' : 'صوّر الطلب عند الباب') + '<input type="file" accept="image/*" capture="environment" onchange="podPhoto(\'' + id + '\',this.files[0])" hidden></label>' +
         '<button type="button" class="submit-btn dng" id="nsBtn" style="margin-top:10px" onclick="markNoShow(\'' + id + '\')"' + (left || !o.podAt ? ' disabled' : '') + '><span class="btn-label">' + (left ? 'يمكنك التسجيل بعد ' + Math.ceil(left / 60000) + ' د' : 'العميل لم يستلم الطلب') + '</span></button>');
 }
 function podPhoto(id, file) {
@@ -497,6 +497,7 @@ function markNoShow(id) {
     if (Date.now() - (arrivedAt(o) || 0) < NOSHOW_WAIT) { HWOrders.toast('انتظر 5 دقائق من وصولك'); return; }
     if (!confirm('تأكيد أن العميل لم يستلم الطلب؟ سيُلغى الطلب ويُبلَّغ الدعم.')) return;
     closeSheet();
+    seen['c' + id] = 1;                                     // هو من ألغاه، فلا تظهر له نافذة "تم إلغاء الطلب"
     HWOrders.update(id, { status: 'cancelled', noShow: true, cancelReason: 'تعذر التسليم: لم يرد العميل عند الباب' }, 'no_show');
     reportIssue(id, 'العميل لم يستلم', 'صورة الإثبات محفوظة · دفع للمطعم ' + money(HWOrders.settle(o).items) + ' د.أ');
     const ph = o.customer && o.customer.phone;
