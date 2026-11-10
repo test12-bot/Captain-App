@@ -1,152 +1,56 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar"><!-- بدون dir="rtl": اتجاه الصفحة يخرّب أماكن عناصر Flutter (الأزرار وحقول الكتابة)، والتطبيق يدير اتجاهه بنفسه -->
 <head>
-<script>try{var d=document.documentElement,t=localStorage.getItem("hw-theme")||"light";if(t==="auto")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";d.setAttribute("data-theme",t);if(localStorage.getItem("hw-lang")==="en"){d.lang="en";d.dir="ltr"}}catch(e){}</script>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="description" content="HIGHWAY Driver App — تطبيق كباتن HIGHWAY Delivery">
-<title>HIGHWAY Driver App</title>
-<meta name="theme-color" content="#26CED0">
-<link rel="manifest" href="manifest.webmanifest">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HW Driver">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=24">
-<link rel="apple-touch-icon" href="icon-512.png?v=24">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;500;600;700;800;900&family=Baloo+2:wght@500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="leaflet.css?v=1.09">
-<link rel="stylesheet" href="styles.css?v=1.09">
-<link rel="stylesheet" href="map.css?v=1.09">
-<link rel="stylesheet" href="theme.css?v=1.09">
-<link rel="stylesheet" href="dark.css?v=1.09">
-<link rel="stylesheet" href="hw-layout.css?v=1.09">
-<link rel="stylesheet" href="hw-type.css?v=1.09">
+  <base href="/captain-app/">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="description" content="تطبيق كباتن HIGHWAY Delivery">
+  <meta name="theme-color" content="#26CED0">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="HW Drivers">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="manifest" href="manifest.json">
+  <title>HIGHWAY Drivers</title>
+  <style>
+    /* مساحات الأمان (النوتش وشريط الرجوع) يقرأها التطبيق عبر hwSafe */
+    :root { --sat: env(safe-area-inset-top, 0px); --sar: env(safe-area-inset-right, 0px); --sab: env(safe-area-inset-bottom, 0px); --sal: env(safe-area-inset-left, 0px); }
+    html, body { margin: 0; height: 100%; background: #FBFAF7; overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
+    #hw-load { position: fixed; inset: 0; pointer-events: none; display: flex; align-items: center; justify-content: center; background: #26CED0; z-index: 9; transition: opacity .35s ease; }
+    #hw-load img { width: 104px; height: 104px; border-radius: 26px; box-shadow: 0 18px 40px -16px rgba(14,58,59,.55); animation: hwp 1.3s ease-in-out infinite; }
+    @keyframes hwp { 50% { transform: scale(.93); opacity: .85; } }
+  </style>
+  <script>
+    window.hwSafe = function () {
+      var s = getComputedStyle(document.documentElement);
+      return ['--sat', '--sar', '--sab', '--sal'].map(function (k) { return parseFloat(s.getPropertyValue(k)) || 0; }).join(',');
+    };
+    // المواقع القديمة كانت تخزّن نفسها في الجوال: نزيلها حتى يفتح التطبيق الجديد دائمًا
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); }).catch(function () {});
+      if (window.caches) caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); }).catch(function () {});
+    }
+    // شاشة التحميل تختفي لما يظهر التطبيق (أول رسمة)، ولا تمنع اللمس أبدًا
+    (function () {
+      var done = false;
+      function hide() {
+        if (done) return; done = true;
+        var l = document.getElementById('hw-load'); if (!l) return;
+        l.style.opacity = '0'; setTimeout(function () { l.remove(); }, 400);
+      }
+      window.addEventListener('flutter-first-frame', hide);
+      new MutationObserver(function (_, o) {
+        if (document.querySelector('flutter-view, flt-glass-pane')) { o.disconnect(); setTimeout(hide, 450); }
+      }).observe(document.documentElement, { childList: true, subtree: true });
+      setTimeout(hide, 12000);
+    })();
+  </script>
 </head>
 <body>
-
-<div class="ambient"></div>
-
-<!-- الشاشة الافتتاحية + تسجيل الدخول (الإطار الزجاجي نفسه يكبر) -->
-<div id="splash">
-  <div class="splash-icons" id="splashIcons"></div>
-  <div class="splash-content">
-    <div class="splash-logo-wrap" id="splashCard">
-      <div class="logo-stage">
-        <video class="splash-video" id="splashVideo" autoplay muted playsinline preload="auto" aria-hidden="true">
-          <source src="splash-intro.mp4?v=24" type="video/mp4">
-          <source src="splash-intro.webm?v=24" type="video/webm">
-        </video>
-        <canvas class="splash-canvas" id="splashCanvas" width="1080" height="530" role="img" aria-label="HIGHWAY Delivery"></canvas>
-        <img class="splash-fallback" src="splash-logo-final.png?v=24" alt="" width="1080" height="530" aria-hidden="true">
-        <button class="login-back" id="loginBack" type="button" onclick="closeLogin()" aria-label="رجوع للشاشة الرئيسية" tabindex="-1">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
-        </button>
-      </div>
-
-      <div class="login-panel" id="loginPanel" aria-hidden="true">
-        <div class="login-clip">
-          <form class="login-form" id="loginForm" novalidate autocomplete="on">
-            <h1>أهلًا يا كابتن</h1>
-            <p class="login-sub">سجّل دخولك برقمك والرمز السري</p>
-
-            <div class="field" id="loginUserField">
-              <label for="loginUser">رقم الهاتف</label>
-              <input type="tel" id="loginUser" name="tel" inputmode="tel" autocomplete="tel" dir="ltr" placeholder="07XXXXXXXX" tabindex="-1">
-            </div>
-            <div class="field" id="loginPassField">
-              <label for="loginPass">الرمز السري</label>
-              <input type="password" id="loginPass" name="pin" inputmode="numeric" autocomplete="current-password" dir="ltr" placeholder="••••" tabindex="-1">
-            </div>
-            <div class="login-error" id="loginError" role="alert"></div>
-
-            <button type="submit" class="submit-btn" id="loginBtn" tabindex="-1">
-              <span class="spinner"><i></i><i></i></span>
-              <span class="btn-label">دخول</span>
-            </button>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <div class="splash-extras" id="splashExtras">
-      <div class="splash-extras-in"><div class="splash-extras-pad">
-        <div class="splash-tagline">اكسب مع كل توصيلة</div>
-        <div class="splash-status">
-          <span>جاري تجهيز الطلبات القريبة</span>
-          <span class="dot-flow"><span></span><span></span><span></span></span>
-        </div>
-        <button class="splash-enter" id="enterBtn" type="button">ابدأ ←</button>
-      </div></div>
-    </div>
-  </div>
-</div>
-
-<div class="app-shell" id="appShell">
-  <header class="app-header">
-    <button class="header-back" id="headerBack" type="button" aria-label="رجوع" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
-    <button class="brand-mini" type="button" onclick="tabGo('screen-jobs')">
-      <img class="brand-mini-logo" src="logo-icon.png?v=2" alt="" width="647" height="560">
-      <div class="brand-mini-text"><span class="brand-mini-title">HIGHWAY <em>Driver</em></span><span class="brand-mini-sub" id="hdrSub">Driver App</span></div>
-    </button>
-  </header>
-  <main class="main">
-    <section class="screen active" id="screen-jobs">
-      <div class="home-map cap-map" id="actMap"><div class="lmap" id="actMapEl"></div></div>
-      <div class="cm-top" id="cmTop"></div>
-      <button type="button" class="cm-me cm-heat" id="heatBtn" onclick="toggleHeat()" aria-label="مناطق الطلب" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 22c4 0 7-2.8 7-6.8 0-3.6-2.4-5.6-3.8-8.4-.6 2-1.6 3-2.8 3.4C12.6 7 11 4.4 8.6 2c.4 3.2-3.6 6.4-3.6 12.2C5 18.8 8 22 12 22Z"/></svg></button>
-      <button type="button" class="cm-me" onclick="recenter()" aria-label="موقعي"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3.5"/><circle cx="12" cy="12" r="8"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3"/></svg></button>
-      <div class="cm-sheet" id="cmSheet"></div>
-      <div class="demo-banner" id="demoBanner" style="display:none;">نسخة تجريبية: الطلبات تُحفظ على هذا الجهاز فقط</div>
-    </section>
-    <section class="screen" id="screen-job"><div class="container" id="jobBody"></div></section>
-    <section class="screen" id="screen-earn"><div class="container">
-      <div class="page-heading"><h1>أرباحي</h1><p>حسابك الكامل مع الشركة</p></div>
-      <div class="chips" id="earnChips"></div>
-      <div id="earnBody"></div>
-    </div></section>
-    <section class="screen" id="screen-profile"><div class="container">
-      <article class="pf-card"><div class="pf-cover"></div><div class="pf-body">
-        <div class="pf-avatar-wrap"><img class="pf-av" id="pfAv" src="art/av-cm.png" alt="" width="104" height="104"></div>
-        <h1 class="pf-name" id="pfName"></h1><p class="pf-handle" id="pfPhone" dir="ltr"></p><span class="pf-chip">كابتن HIGHWAY</span>
-      </div></article>
-      <div class="pf-list">
-        <div class="pf-row"><span class="pf-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h4M7 14h6"/><circle cx="16.5" cy="11.5" r="2"/></svg></span><span class="pf-k">رقم الكابتن</span><span class="pf-v" id="pfNum" dir="ltr">—</span></div>
-        <div class="pf-row"><span class="pf-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z"/></svg></span><span class="pf-k">تقييمك من العملاء</span><span class="pf-v" id="pfRate">—</span></div>
-        <div class="pf-row"><span class="pf-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/></svg></span><span class="pf-k">مشاركة موقعي مع مركز العمليات</span><span class="pf-v" id="pfGps">دائمًا</span></div>
-        <button class="pf-row pf-link" type="button" onclick="openSupport()"><span class="pf-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/></svg></span><span class="pf-k">الدعم</span><span class="pf-v">محادثة مع فريق HIGHWAY</span></button>
-      </div>
-      <button class="pf-logout" type="button" onclick="logout()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>تسجيل الخروج</button>
-    </div></section>
-  </main>
-  <button type="button" class="susp-bar" id="suspBar" hidden onclick="suspendSheet()"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><span>حسابك موقوف مؤقتًا</span><b>التفاصيل</b></button>
-  <div class="live-bar" id="liveBar" onclick="tabGo('screen-jobs')"><div class="lv-top"><span class="lv-dot"></span><div class="lv-txt"><b id="lvTitle"></b><small id="lvSub"></small></div></div></div>
-  <nav class="tabbar" aria-label="التنقل الرئيسي">
-    <button class="tab on" type="button" data-tab="jobs" onclick="tabGo('screen-jobs')"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg><em class="tb" id="tabBadge"></em></span><span>الطلبات</span></button>
-    <button class="tab" type="button" data-tab="earn" onclick="tabGo('screen-earn')"><span class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 14h2"/></svg></span><span>أرباحي</span></button>
-  </nav>
-</div>
-<div id="sheet" class="modal" onclick="if(event.target===this) closeSheet()"><div class="modal-card glass" id="sheetBody"></div></div>
-<script src="leaflet.js?v=1.09"></script>
-<script src="hw-i18n.js?v=1.09"></script>
-<script src="hw-config.js?v=1.09"></script>
-<script src="hw-map.js?v=1.09"></script>
-<script src="hw-food.js?v=1.09"></script>
-<script src="hw-orders.js?v=1.09"></script>
-<script src="hw-notify.js?v=1.09"></script>
-<script src="hw-push.js?v=1.09"></script>
-<script src="hw-biz.js?v=1.09"></script>
-<script src="hw-native.js?v=1.09"></script>
-<script src="hw-prices.js?v=1.09"></script>
-<script src="hw-dest.js?v=1.09"></script>
-<script src="hw-head.js?v=1.09"></script>
-<script src="hw-icons.js?v=1.09"></script>
-<script src="hw-support.js?v=1.09"></script>
-<script src="script.js?v=1.09"></script>
-<script src="hw-ui.js?v=1.09"></script>
-<script src="hw-stats.js?v=1.09"></script>
-<script src="hw-onboard.js?v=1.09" data-role="captain"></script>
+  <div id="hw-load"><img src="icons/icon-192.png" alt=""></div>
+  <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
